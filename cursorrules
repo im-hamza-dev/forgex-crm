@@ -1,0 +1,298 @@
+# Forgex CRM — Cursor Rules
+# Read this entire file before touching any code.
+# Every suggestion must be consistent with these rules.
+
+## Project
+- Name: Forgex CRM
+- Product: Centralized CRM, project management, blog/content system, and client portal for Forgex Systems (AI & Automation Agency)
+- Framework: Next.js 15 (App Router)
+- Language: TypeScript strict mode — never use `any`, use `unknown` and narrow properly
+- Styling: Tailwind CSS v4 + CSS variables (no CSS modules, no inline styles for new code)
+- Database: Supabase (PostgreSQL + RLS + Realtime)
+- Auth: Supabase Auth via @supabase/ssr
+- Deployment: Vercel
+- Design language: Forgex brand (forge-black + electric-lime) — see Design System below
+
+## Import Alias
+- One alias only: @/* → ./src/*
+- Example: import { throwIfError } from '@/server/leads/utils'
+- No other aliases (~, #, etc.) exist or should be used
+
+## Folder Structure (src/)
+src/
+├── app/                        # Next.js App Router — pages, layouts, API routes
+│   ├── (auth)/                 # Login, signup, forgot/reset password
+│   ├── (dashboard)/            # Main authenticated shell — sidebar + header
+│   │   # Pages: dashboard, leads, projects, tasks, blog, content-calendar,
+│   │   #        notifications, settings, team, reports, docs
+│   ├── (client-portal)/        # Separate shell for client-facing views
+│   │   # Pages: portal/[projectId], portal/tickets, portal/files
+│   ├── (onboarding)/           # First-run setup wizard
+│   └── api/                    # API route handlers (thin — delegate to server/)
+│       ├── leads/
+│       ├── projects/
+│       ├── tasks/
+│       ├── blog/
+│       ├── notifications/
+│       ├── team/
+│       ├── tickets/
+│       └── docs/
+├── components/                 # UI components organised by feature
+│   ├── leads/                  # Lead pipeline, kanban card, lead drawer, conversation log
+│   ├── projects/               # Project board, progress, milestone, update feed
+│   ├── tasks/                  # Task kanban, task card, task drawer
+│   ├── blog/                   # Blog editor, post list, SEO panel, category mgmt
+│   ├── content-calendar/       # Calendar view, post scheduling
+│   ├── notifications/          # Bell, notification list, notification item
+│   ├── client-portal/          # Client-facing project view, ticket form, file list
+│   ├── tickets/                # Client ticket list, ticket drawer (internal view)
+│   ├── team/                   # Team member list, invite, role management
+│   ├── reports/                # Reports UI
+│   ├── docs/                   # Internal docs editor and list
+│   ├── settings/               # Settings UI
+│   ├── dashboard/              # Dashboard KPI cards and overview
+│   ├── layout/                 # Sidebar, header, shells (dashboard + portal)
+│   ├── providers/              # App-level providers (QueryClient, auth, etc.)
+│   ├── forgex/                 # Shared design-system helpers (forgex-surface.ts, KpiCard, etc.)
+│   └── ui/                     # Primitives (Button, Input, Modal, Drawer, etc.) — Modal, not Dialog
+├── hooks/                      # Custom React hooks (prefix: use*)
+├── services/                   # Client-side API wrappers (talk to /api/* routes)
+├── stores/                     # Zustand global stores (auth, team context)
+├── server/                     # Server-only business logic — never import in client components
+│   ├── leads/                  # Lead CRUD, pipeline, conversation log, follow-up
+│   ├── projects/               # Project CRUD, progress calc, milestones, updates
+│   ├── tasks/                  # Task CRUD, assignment, status
+│   ├── blog/                   # Blog post CRUD, publish flow, SEO fields
+│   ├── blog-comments/          # Comment moderation, threading
+│   ├── content-calendar/       # Calendar entries, scheduling
+│   ├── notifications/          # Create + mark-read + dismiss notifications
+│   ├── client-portal/          # Portal auth, project view, file serving
+│   ├── tickets/                # Client ticket + message CRUD
+│   ├── team/                   # Team member invite, role management
+│   ├── docs/                   # Internal notes and docs CRUD
+│   ├── reports/                # Report aggregation
+│   ├── profile/                # Profile updates
+│   └── shared/                 # require-session, handle-route-error, errors, throwIfError
+├── lib/
+│   ├── supabase/               # client.ts, server.ts, middleware.ts, service.ts
+│   ├── api/                    # fetch-client.ts, responses.ts
+│   ├── auth/                   # profile-role.ts, portal-gate.ts
+│   ├── validations/            # zod schemas (client + *-api.ts for API inputs)
+│   ├── blog/                   # SEO helpers, slug generator, reading-time
+│   ├── animations.ts           # Framer Motion presets
+│   ├── fonts.ts                # Inter + General Sans
+│   └── query/                  # QueryClient, queryKeys
+├── types/                      # TypeScript interfaces + database.types.ts (generated)
+├── constants/
+│   ├── routes.ts               # Single source of truth for all paths
+│   ├── env.ts                  # Public env vars
+│   ├── env.server.ts           # Server-only env vars
+│   ├── lead-stages.ts          # Pipeline stage definitions
+│   ├── roles.ts                # Role constants (admin | manager | member | client)
+│   └── blog-categories.ts      # Blog category/tag constants
+└── styles/
+    └── forgex-brand.css        # Brand color tokens and CSS variables (source of truth)
+
+## Key Libraries — Always Use These, Never Substitute
+- Server data:      @tanstack/react-query (useQuery, useMutation) — never raw useEffect+fetch
+- Forms:            react-hook-form + zod
+- Global state:     zustand
+- Icons:            lucide-react (outline only, never -filled variants)
+- Animations:       framer-motion
+- UI primitives:    components/ui/ (Modal, Button, etc.) and components/forgex/
+- Class merging:    clsx + tailwind-merge via cn() helper
+- Dates:            date-fns
+- Rich text:        @tiptap/react (blog editor + internal docs editor)
+- Charts:           recharts
+- Realtime:         Supabase Realtime (notifications channel only)
+
+## Supabase Clients — Never Mix These Up
+- Browser (client components): createClient from @/lib/supabase/client
+- Server (server components, API routes): createClient from @/lib/supabase/server
+- Middleware: createClient from @/lib/supabase/middleware
+- Service role (RLS bypass): createServiceClient from @/lib/supabase/service
+  — only use service client for: client portal invite, notification fan-out, cron jobs, ticket creation
+- Never import from @supabase/supabase-js directly in app/ or components/
+
+## Supabase Type
+- ServerSupabase = SupabaseClient<Database>
+- Import: import type { ServerSupabase } from '@/server/shared/require-session'
+- Always pass supabase as a parameter into server functions — never create it inside
+- Exception: createServiceClient() is called inside functions that need RLS bypass
+
+## Session and Auth Patterns
+- getSession()     → { user, supabase, role } — does not require a role
+- requireSession() → same but throws ForbiddenError if no role assigned
+- requireRole(roles: Role[]) → throws ForbiddenError if user role not in list
+- Portal session:  getPortalSession() → { client, project, supabase } (client-portal routes only)
+- Role hierarchy:  admin > manager > member > client (client = portal only)
+
+## Server Function Signatures
+- Standard style: (supabase: ServerSupabase, userId: string, ...params)
+- Always match the existing style in the file you are editing
+
+## API Route Pattern
+- Routes are thin — 10-20 lines max
+- Pattern: getSession() → requireRole() → validate with zod → call server function → return ok()
+- Always use response helpers from @/lib/api/responses (ok, created, badRequest, unauthorized, forbidden, notFound, conflict, serverError)
+- Always use handleRouteError from @/server/shared/handle-route-error for catch blocks
+- Validate all inputs with zod before use — client schemas in lib/validations/, API schemas in lib/validations/*-api.ts
+
+## Error Handling
+- throwIfError(error) — throws SupabaseError on PostgrestError
+- Error classes in @/server/shared/errors: UnauthorizedError, ForbiddenError, NotFoundError, ValidationError, SupabaseError
+- handleRouteError maps these to correct HTTP responses
+
+## Notifications (In-App Only — No Email)
+- All notifications are in-app only. No email notifications exist.
+- Insert into notifications table via server/notifications/notifications.server.ts
+- Use Supabase Realtime to push to the browser — subscribe in useNotifications hook
+- Never call any email service for notification purposes
+- Notification types: lead_assigned | follow_up_due | ticket_raised | blog_needs_review | task_assigned | project_updated | client_invited | comment_needs_moderation
+
+## Database — Real Tables (Supabase PostgreSQL)
+All tables use gen_random_uuid() for IDs. user_id FK to auth.users.
+
+### Auth / Team
+- profiles           id, email, full_name, avatar_url, role (admin|manager|member)
+- client_accounts    id, email, full_name, project_id, invite_token, status (pending|active)
+
+### Leads
+- leads              id, user_id (owner), company, contact_name, email, phone, linkedin,
+                     source, budget_range, service_interest, stage, priority, lead_score,
+                     assigned_to, next_follow_up, tags[], status (active|won|lost|archived),
+                     created_at, updated_at
+- lead_notes         id, lead_id, author_id, content, note_type (note|meeting|email|call|whatsapp),
+                     attachments[], created_at
+- lead_attachments   id, lead_id, uploaded_by, file_url, file_name, file_size, created_at
+
+### Projects
+- projects           id, name, description, client_account_id, service_type, status,
+                     start_date, deadline, fixed_price, payment_status, completion_pct,
+                     is_client_visible, created_at, updated_at
+- project_members    id, project_id, user_id, role
+- project_milestones id, project_id, title, due_date, completed_at
+- project_updates    id, project_id, author_id, content, is_client_visible, created_at
+- project_files      id, project_id, uploaded_by, file_url, file_name, is_client_visible, created_at
+
+### Tasks
+- tasks              id, project_id (nullable), assigned_to, created_by, title, description,
+                     status (todo|in_progress|done), priority, due_date, estimated_hours,
+                     actual_hours, parent_task_id (for sub-tasks), created_at, updated_at
+- task_comments      id, task_id, author_id, content, created_at
+
+### Client Portal
+- client_tickets     id, client_account_id, project_id, subject, status (open|in_progress|resolved),
+                     priority, created_at, updated_at
+- client_ticket_messages  id, ticket_id, sender_id, sender_type (client|team), content, created_at
+
+### Blog
+- blog_posts         id, title, slug (unique), author_id, excerpt, body (jsonb tiptap),
+                     cover_image_url, category, tags[], status (draft|in_review|scheduled|published),
+                     publish_date, seo_title, seo_description, canonical_url, og_image_url,
+                     reading_time_minutes, is_featured, allow_comments, created_at, updated_at
+- blog_categories    id, name, slug (unique), description
+- blog_comments      id, post_id, community_user_id (nullable), team_user_id (nullable),
+                     parent_comment_id (nullable), content, status (pending|approved|rejected),
+                     created_at
+- community_users    id, email, display_name, avatar_url, bio, created_at
+
+### Content Calendar
+- content_calendar   id, blog_post_id (nullable), title, planned_date, status
+                     (idea|draft|in_review|scheduled|published), assigned_to, notes, created_at
+
+### Internal Docs
+- internal_docs      id, author_id, title, content (jsonb tiptap), category, is_shared,
+                     created_at, updated_at
+
+### Notifications
+- notifications      id, user_id, type, title, body, reference_type, reference_id,
+                     is_read, is_dismissed, created_at
+
+## Migrations Naming Convention
+- Primary folder: supabase/migrations/
+- Sub-folders by feature: supabase/migrations/{feature}/
+  - 00_core/        → extensions, enums, shared types
+  - 01_auth/        → profiles, client_accounts
+  - 02_leads/       → leads, lead_notes, lead_attachments
+  - 03_projects/    → projects, members, milestones, updates, files
+  - 04_tasks/       → tasks, task_comments
+  - 05_blog/        → blog_posts, categories, comments, community_users
+  - 06_content/     → content_calendar, internal_docs
+  - 07_notifications/ → notifications, triggers
+  - 08_portal/      → client_tickets, ticket_messages, RLS for portal
+  - 09_rls/         → consolidated RLS policies (one file per table group)
+  - 10_indexes/     → all performance indexes
+  - 11_triggers/    → all DB triggers (timestamps, completion_pct, realtime)
+- Naming inside each folder: NNN_description.sql (e.g. 001_create_leads.sql)
+- Never modify existing migration files — always add new ones
+- Always run migrations in folder order, then file number order within folder
+
+## Design System
+Source of truth: src/styles/forgex-brand.css + helpers in src/components/forgex/forgex-surface.ts
+
+### Colors
+- forge-black     #0A0A0A   primary text, headings
+- electric-lime   #C8FF00   primary CTA fill
+- dim-lime        #A0CC00   CTA hover
+- ash             #1A1A1A   sidebar, dark surfaces
+- smoke           #2A2A2A   card backgrounds (dark mode)
+- mist            #F5F5F5   page background (light mode)
+- fog             #E0E0E0   borders, dividers
+- pebble          #888888   muted text
+- paper           #FFFFFF   surfaces
+- Destructive:    #FF4D4D
+- Success:        #22C55E
+- Warning:        #F59E0B
+
+### Radii
+- --radius-card: 12px    content cards
+- --radius-surface: 20px shell, sidebar, modals, drawers
+- --radius-btn: 9999px   pill buttons
+- --radius-input: 8px
+
+### Typography
+- font-inter      body / UI / buttons (Inter)
+- font-display    headings / KPIs (General Sans)
+
+### Buttons
+- Primary CTA: Button default = electric-lime fill + forge-black text
+- Secondary: Button variant="outline"
+
+### z-index layers
+- sidebar: z-40
+- drawers: z-[100]
+- notifications: z-[150]
+- modals: z-[300]
+- toasts: z-[400]
+
+## Routing
+- Prefer paths from src/constants/routes.ts — never hardcode when a ROUTES key exists
+- Dashboard routes gated by middleware: requires auth + role (admin|manager|member)
+- Client portal routes: requires client_accounts.status = 'active' + valid project scope
+- Public blog: on forgex.systems (separate repo) — CRM only manages data
+
+## What Cursor Must Always Do
+- Read relevant existing files before writing any new code
+- Match the exact patterns of existing server functions in the same module
+- Never create a new Supabase client inside a server function — accept it as a parameter
+- Never use `any` — use `unknown` and narrow
+- Prefer ROUTES from @/constants/routes — add keys when introducing new paths
+- Never install new packages without asking
+- Always use throwIfError() for Supabase query errors
+- Always use handleRouteError in API route catch blocks
+- Always validate API inputs with zod before use
+- For notifications: always insert via server/notifications/ — never write to notifications table directly in feature code
+- For realtime: subscribe only in hooks, never in server components
+- Use design tokens (forge-black, electric-lime, ash, --radius-card) — no hardcoded hex values in components
+
+## What Cursor Must Never Do
+- Never send email notifications — in-app only via notifications table + Supabase Realtime
+- Never use raw useEffect+fetch for server data — use React Query
+- Never import Supabase directly in components — go through lib/supabase/
+- Never put business logic in API route files — delegate to server/ modules
+- Never create the service Supabase client unless RLS bypass is explicitly needed
+- Never skip zod validation on API inputs
+- Never invent a Dialog primitive — use Modal from @/components/ui/Modal
+- Never allow client portal users to access team-only data (always scope by project + client_account_id)
+- Never hardcode lead stages, roles, or blog categories — import from constants/

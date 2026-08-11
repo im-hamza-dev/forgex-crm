@@ -1,0 +1,4 @@
+# Forgex CRM — Cursor Rules
+# Scaffold complete. Build features in planned phases only.
+# Do not hardcode brand tokens — use CSS variables / forgex-surface helpers.
+# Prefer server/ for data access and services/ for client fetch wrappers.
