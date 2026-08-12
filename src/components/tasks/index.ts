@@ -1,0 +1,5 @@
+export { TaskCard } from './TaskCard'
+export { TasksKanban } from './TasksKanban'
+export { TasksTable } from './TasksTable'
+export { TasksStatsRow } from './TasksStatsRow'
+export { NewTaskModal } from './NewTaskModal'

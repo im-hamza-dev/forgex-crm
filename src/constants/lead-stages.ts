@@ -1,11 +1,65 @@
-export const LEAD_STAGES = [
-  { value: 'new_lead',       label: 'New Lead',       color: '#888888' },
-  { value: 'contacted',      label: 'Contacted',      color: '#3B82F6' },
-  { value: 'qualified',      label: 'Qualified',      color: '#F59E0B' },
-  { value: 'proposal_sent',  label: 'Proposal Sent',  color: '#8B5CF6' },
-  { value: 'negotiation',    label: 'Negotiation',    color: '#EC4899' },
-  { value: 'won',            label: 'Won',            color: '#22C55E' },
-  { value: 'lost',           label: 'Lost',           color: '#FF4D4D' },
-] as const
+export interface LeadStage {
+  value: string
+  label: string
+  color: string
+  colorBg: string
+  colorText: string
+}
 
-export type LeadStage = typeof LEAD_STAGES[number]['value']
+export const LEAD_STAGES: LeadStage[] = [
+  {
+    value: 'new_lead',
+    label: 'New Lead',
+    color:     '#9CA3AF',
+    colorBg:   '#F5F5F5',
+    colorText: '#6B6B6B',
+  },
+  {
+    value: 'contacted',
+    label: 'Contacted',
+    color:     '#1A3D6B',
+    colorBg:   '#EEF3FA',
+    colorText: '#1A3D6B',
+  },
+  {
+    value: 'qualified',
+    label: 'Qualified',
+    color:     '#4A1D6B',
+    colorBg:   '#F3EEF8',
+    colorText: '#4A1D6B',
+  },
+  {
+    value: 'proposal_sent',
+    label: 'Proposal Sent',
+    color:     '#8B5E00',
+    colorBg:   '#FEF7E6',
+    colorText: '#8B5E00',
+  },
+  {
+    value: 'negotiation',
+    label: 'Negotiation',
+    color:     '#7A2D5C',
+    colorBg:   '#F8EEF4',
+    colorText: '#7A2D5C',
+  },
+  {
+    value: 'won',
+    label: 'Won',
+    color:     '#2D6A2D',
+    colorBg:   '#EDF5ED',
+    colorText: '#2D6A2D',
+  },
+  {
+    value: 'lost',
+    label: 'Lost',
+    color:     '#8B1A1A',
+    colorBg:   '#FDF0F0',
+    colorText: '#8B1A1A',
+  },
+]
+
+export type LeadStageValue = typeof LEAD_STAGES[number]['value']
+
+export function getStage(value: string): LeadStage {
+  return LEAD_STAGES.find((s) => s.value === value) ?? LEAD_STAGES[0]!
+}

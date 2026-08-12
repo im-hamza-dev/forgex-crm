@@ -7,7 +7,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* ── Brand primitives ── */
+  /* ── Brand primitives (legacy scaffold) ── */
   --forge-black:    #0A0A0A;
   --electric-lime:  #C8FF00;
   --dim-lime:       #A0CC00;
@@ -19,17 +19,17 @@
   --paper:          #FFFFFF;
   --btn-text:       #0A0A0A;
 
-  /* ── Semantic ── */
+  /* ── Semantic (legacy scaffold) ── */
   --destructive:    #FF4D4D;
   --success:        #22C55E;
   --warning:        #F59E0B;
   --info:           #3B82F6;
 
-  /* ── Borders ── */
+  /* ── Borders (legacy scaffold) ── */
   --border-default: #E0E0E0;
   --border-strong:  #C0C0C0;
 
-  /* ── Radii ── */
+  /* ── Radii (legacy scaffold) ── */
   --radius-card:    12px;
   --radius-surface: 20px;
   --radius-btn:     9999px;
@@ -40,8 +40,88 @@
   --font-display:  'Inter', sans-serif;  /* swap to General Sans when licensed */
   --font-body:     var(--font-inter);
 
-  /* ── Backgrounds ── */
+  /* ── Backgrounds (legacy scaffold) ── */
   --bg-page:       #F5F5F5;
   --bg-sidebar:    #0A0A0A;
   --bg-card:       #FFFFFF;
+
+  /* ── Brand (UI system) ── */
+  --color-accent:         #9c6644;
+  --color-accent-hover:   #8a5538;
+  --color-accent-subtle:  #F5EDE6;
+  --color-accent-border:  #E8D5C4;
+  --color-action:         #1A1008;
+
+  /* ── Surfaces ── */
+  --color-page:           #F5F5F5;
+  --color-surface:        #FFFFFF;
+  --color-surface-hover:  #FAFAFA;
+
+  /* ── Text ── */
+  --color-text-heading:   #1A1008;
+  --color-text-body:      #3D2E1E;
+  --color-text-secondary: #7A6555;
+  --color-text-muted:     #B0A090;
+  --color-text-disabled:  #D4CBC0;
+
+  /* ── Borders (UI system) ── */
+  --color-border:         #E8E8E8;
+  --color-border-strong:  #D4D4D4;
+  --color-border-focus:   #9c6644;
+
+  /* ── Semantic (UI system) ── */
+  --color-success:        #2D6A2D;
+  --color-success-bg:     #EDF5ED;
+  --color-warning:        #8B5E00;
+  --color-warning-bg:     #FEF7E6;
+  --color-danger:         #8B1A1A;
+  --color-danger-bg:      #FDF0F0;
+  --color-info:           #1A3D6B;
+  --color-info-bg:        #EEF3FA;
+
+  /* ── Overlay ── */
+  --color-overlay:        rgba(26, 16, 8, 0.5);
+  --color-overlay-drawer: rgba(26, 16, 8, 0.4);
+
+  /* ── Auth / Google button ── */
+  --color-google-bg:       #000000;
+  --color-google-bg-hover: #1a1a1a;
+
+  /* ── Lead stage chips (dashboard mock / kanban) ── */
+  --color-stage-new:            #6B6B6B;
+  --color-stage-new-bg:         #F5F5F5;
+  --color-stage-new-dot:        #9CA3AF;
+  --color-stage-qualified:      #4A1D6B;
+  --color-stage-qualified-bg:   #F3EEF8;
+  --color-stage-proposal:       #8B5E00;
+  --color-stage-proposal-bg:    #FEF7E6;
+  --color-stage-contacted:      #1A3D6B;
+  --color-stage-contacted-bg:   #EEF3FA;
+  --color-stage-negotiation:    #7A2D5C;
+  --color-stage-negotiation-bg: #F8EEF4;
+  --color-stage-won:            #2D6A2D;
+  --color-stage-won-bg:         #EDF5ED;
+  --color-stage-lost:           #8B1A1A;
+  --color-stage-lost-bg:        #FDF0F0;
+
+  /* ── Priority dots ── */
+  --color-priority-urgent: #8B1A1A;
+  --color-priority-high:   #8B5E00;
+  --color-priority-medium: #1A3D6B;
+  --color-priority-low:    #2D6A2D;
+
+  /* ── Project pills ── */
+  --color-project-pas:    #4A1D6B;
+  --color-project-pas-bg: #F3EEF8;
+  --color-project-b2b:    #1A3D6B;
+  --color-project-b2b-bg: #EEF3FA;
+  --color-project-cgp:    #2D6A2D;
+  --color-project-cgp-bg: #EDF5ED;
+
+  /* ── Radii (UI system) ── */
+  --radius-sm:    6px;
+  --radius-md:    8px;
+  --radius-lg:    12px;
+  --radius-xl:    14px;
+  --radius-pill:  9999px;
 }

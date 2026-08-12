@@ -4,6 +4,7 @@ export const ROUTES = {
   SIGNUP:           '/signup',
   FORGOT_PASSWORD:  '/forgot-password',
   RESET_PASSWORD:   '/reset-password',
+  AUTH_CALLBACK:    '/api/auth/callback',
 
   // Dashboard
   DASHBOARD:        '/dashboard',
@@ -28,6 +29,7 @@ export const ROUTES = {
   CONTENT_CALENDAR: '/content-calendar',
   DOCS:             '/docs',
   DOC:              (id: string) => `/docs/${id}`,
+  DOC_NEW:          '/docs/new',
 
   // Team & Settings
   TEAM:             '/team',
