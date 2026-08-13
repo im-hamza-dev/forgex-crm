@@ -5,14 +5,15 @@ import { usePathname } from 'next/navigation'
 import { ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, Badge } from '@/components/ui'
-import { NAV_GROUPS, type NavItem } from '@/constants/nav'
+import { getNavForRole, type NavItem } from '@/constants/nav'
+import { ROLE_LABELS, type TeamRole } from '@/constants/roles'
 import { ROUTES } from '@/constants/routes'
 
 interface SidebarProps {
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
   userName?: string
-  userRole?: 'admin' | 'manager' | 'member'
+  userRole?: TeamRole
   userAvatarUrl?: string | null
   notificationCount?: number
   onSignOut?: () => void
@@ -28,18 +29,13 @@ export function Sidebar({
   onSignOut,
 }: SidebarProps) {
   const pathname = usePathname()
+  const navGroups = getNavForRole(userRole)
 
   const isActive = (href: string) =>
     href === ROUTES.DASHBOARD ? pathname === href : pathname.startsWith(href)
 
   const getBadge = (item: NavItem): number =>
     item.badgeKey === 'notifications' ? notificationCount : 0
-
-  const roleLabel: Record<'admin' | 'manager' | 'member', string> = {
-    admin: 'Admin',
-    manager: 'Manager',
-    member: 'Member',
-  }
 
   return (
     <aside
@@ -82,7 +78,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
-        {NAV_GROUPS.map((group, gi) => (
+        {navGroups.map((group, gi) => (
           <div key={group.label} className={cn(gi > 0 && 'pt-3')}>
             {!collapsed && (
               <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
@@ -183,7 +179,7 @@ export function Sidebar({
                 {userName}
               </p>
               <Badge variant="accent" size="sm" className="mt-0.5">
-                {roleLabel[userRole]}
+                {ROLE_LABELS[userRole]}
               </Badge>
             </div>
             <button

@@ -5,6 +5,7 @@ import { ENV } from '@/constants/env'
 
 export async function createClient() {
   const cookieStore = await cookies()
+
   return createServerClient<Database>(
     ENV.SUPABASE_URL,
     ENV.SUPABASE_ANON_KEY,
@@ -15,11 +16,14 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, {
+                ...options,
+                sameSite: 'lax',
+              })
+            })
           } catch {
-            // Server component — cannot set cookies
+            // Server component — ignore set errors
           }
         },
       },

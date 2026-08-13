@@ -6,7 +6,8 @@ import { ArrowLeft, CheckCircle } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AuthCard, Button } from '@/components/ui'
+import { AuthCard, Button, toast } from '@/components/ui'
+import { createClient } from '@/lib/supabase/client'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
@@ -27,13 +28,21 @@ export default function ForgotPasswordPage() {
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(schema) })
 
-  // TODO: wire to Supabase in auth feature prompt
   const onSubmit = async (values: Values) => {
     setIsLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 800)) // placeholder
+      const supabase = createClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
+      })
+      if (error) {
+        toast.error(error.message)
+        return
+      }
       setSentEmail(values.email)
       setSent(true)
+    } catch {
+      toast.error('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
     }

@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "cross-env NODE_OPTIONS=--max-http-header-size=32768 next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
@@ -23,6 +23,7 @@
     "@tiptap/react": "^3.30.0",
     "@tiptap/starter-kit": "^3.30.0",
     "clsx": "^2.1.1",
+    "cross-env": "^10.1.0",
     "date-fns": "^4.4.0",
     "framer-motion": "^13.1.0",
     "lowlight": "^3.3.0",

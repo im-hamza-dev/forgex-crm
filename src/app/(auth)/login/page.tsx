@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,6 +14,7 @@ import {
   GoogleButton,
   Button,
 } from '@/components/ui'
+import { createClient } from '@/lib/supabase/client'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
@@ -23,7 +25,15 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo') ?? ROUTES.DASHBOARD
+  const errorParam = searchParams.get('error')
+  let errorMessage: string | null = null
+  if (errorParam === 'not_invited') {
+    errorMessage = 'This account has not been invited. Contact your administrator.'
+  }
+
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -35,25 +45,48 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) })
 
-  // TODO: wire to Supabase in auth feature prompt
-  const onSubmit = async (_values: LoginValues) => {
+  const onSubmit = async (values: LoginValues) => {
     setIsLoading(true)
     setError(null)
     try {
-      // Supabase sign-in goes here
-      await new Promise((r) => setTimeout(r, 800)) // placeholder
+      const supabase = createClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      })
+
+      if (signInError) {
+        setError(
+          signInError.message === 'Invalid login credentials'
+            ? 'Incorrect email or password'
+            : signInError.message,
+        )
+        return
+      }
+
+      window.location.href = redirectTo
     } catch {
-      setError('Incorrect email or password')
+      setError('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // TODO: wire to Supabase Google OAuth in auth feature prompt
   const handleGoogle = async () => {
     setIsGoogleLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 800)) // placeholder
+      const supabase = createClient()
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        },
+      })
+      if (oauthError) {
+        setError(oauthError.message)
+      }
+    } catch {
+      setError('Google sign in failed. Please try again.')
     } finally {
       setIsGoogleLoading(false)
     }
@@ -72,9 +105,9 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {error && (
+      {!!(error || errorMessage) && (
         <div className="mb-4 px-3.5 py-2.5 rounded-lg text-[13px] bg-[var(--color-danger-bg)] text-[var(--color-danger)]">
-          {error}
+          {error ?? errorMessage}
         </div>
       )}
 
@@ -172,14 +205,24 @@ export default function LoginPage() {
       <GoogleButton onClick={handleGoogle} loading={isGoogleLoading} />
 
       <p className="mt-5 text-center text-[13px] text-[var(--color-text-muted)]">
-        Don&apos;t have an account?{' '}
-        <Link
-          href={ROUTES.SIGNUP}
-          className="font-semibold transition-opacity hover:opacity-70 text-[var(--color-text-heading)]"
-        >
-          Sign up
-        </Link>
+        Access is invite-only. Contact your admin if you need an account.
       </p>
     </AuthCard>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthCard>
+          <div className="flex justify-center py-16">
+            <div className="w-6 h-6 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
+          </div>
+        </AuthCard>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Fix HTTP 431 — increase header size for Supabase auth cookies
+  experimental: {
+    optimizeServerReact: true,
+  },
 }
 
 export default nextConfig

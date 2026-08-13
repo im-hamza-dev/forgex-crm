@@ -5,31 +5,28 @@ import { useRouter } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { CommandPalette } from './CommandPalette'
+import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+import type { TeamRole } from '@/constants/roles'
 
 interface DashboardShellProps {
   title: string
   breadcrumb?: { label: string; href?: string }[]
-  userName?: string
-  userRole?: 'admin' | 'manager' | 'member'
-  userAvatarUrl?: string | null
-  notificationCount?: number
   children: React.ReactNode
   noPadding?: boolean
+  notificationCount?: number
 }
 
 export function DashboardShell({
   title,
   breadcrumb,
-  userName = 'Hamza Iqbal',
-  userRole = 'admin',
-  userAvatarUrl = null,
-  notificationCount = 0,
   children,
   noPadding = false,
+  notificationCount = 0,
 }: DashboardShellProps) {
   const router = useRouter()
+  const { profile, isLoading, signOut } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [cmdOpen, setCmdOpen] = useState(false)
 
@@ -44,6 +41,21 @@ export function DashboardShell({
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  if (isLoading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--color-page)' }}
+      >
+        <div className="w-6 h-6 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
+  const userName = profile?.full_name ?? profile?.email ?? 'Team member'
+  const userRole = (profile?.role ?? 'member') as TeamRole
+  const userAvatar = profile?.avatar_url ?? null
+
   return (
     <div className="min-h-screen bg-[var(--color-page)]">
       <Sidebar
@@ -51,9 +63,9 @@ export function DashboardShell({
         onCollapsedChange={setCollapsed}
         userName={userName}
         userRole={userRole}
-        userAvatarUrl={userAvatarUrl}
+        userAvatarUrl={userAvatar}
         notificationCount={notificationCount}
-        onSignOut={() => router.push(ROUTES.LOGIN)}
+        onSignOut={signOut}
       />
 
       <div
@@ -67,7 +79,7 @@ export function DashboardShell({
           title={title}
           breadcrumb={breadcrumb}
           userName={userName}
-          userAvatarUrl={userAvatarUrl}
+          userAvatarUrl={userAvatar}
           notificationCount={notificationCount}
           onSearchClick={() => setCmdOpen(true)}
           onBellClick={() => router.push(ROUTES.NOTIFICATIONS)}

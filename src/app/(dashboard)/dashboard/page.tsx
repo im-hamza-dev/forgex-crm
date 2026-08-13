@@ -1,3 +1,6 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { ROUTES } from '@/constants/routes'
 import { DashboardShell } from '@/components/layout'
 import {
   KpiCard,
@@ -79,12 +82,29 @@ function getFormattedDate(): string {
   })
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect(ROUTES.LOGIN)
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', user.id)
+    .single()
+
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+
   return (
     <DashboardShell title="Dashboard" notificationCount={3}>
       <div className="flex items-baseline justify-between mb-6">
         <h2 className="text-[28px] font-bold leading-tight text-[var(--color-text-heading)]">
-          {getGreeting()}, Hamza
+          {getGreeting()}, {firstName}
         </h2>
         <span className="text-[13px] text-[var(--color-text-muted)]">
           {getFormattedDate()}

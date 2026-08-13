@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AuthCard, Button } from '@/components/ui'
+import { AuthCard, Button, toast } from '@/components/ui'
+import { createClient } from '@/lib/supabase/client'
+import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 const schema = z
@@ -21,6 +24,7 @@ const schema = z
 type Values = z.infer<typeof schema>
 
 export default function ResetPasswordPage() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -30,11 +34,23 @@ export default function ResetPasswordPage() {
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(schema) })
 
-  // TODO: wire to Supabase in auth feature prompt
-  const onSubmit = async (_values: Values) => {
+  const onSubmit = async (values: Values) => {
     setIsLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 800)) // placeholder
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({
+        password: values.password,
+      })
+
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
+      toast.success('Password updated successfully.')
+      router.push(ROUTES.LOGIN)
+    } catch {
+      toast.error('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
     }

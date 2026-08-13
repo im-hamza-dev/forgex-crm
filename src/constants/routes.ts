@@ -1,7 +1,8 @@
 export const ROUTES = {
   // Auth
   LOGIN:            '/login',
-  SIGNUP:           '/signup',
+  SETUP:            '/setup',
+  ACCEPT_INVITE:    '/accept-invite',
   FORGOT_PASSWORD:  '/forgot-password',
   RESET_PASSWORD:   '/reset-password',
   AUTH_CALLBACK:    '/api/auth/callback',
@@ -59,6 +60,7 @@ export const ROUTES = {
     BLOG_POST:      (id: string) => `/api/blog/${id}`,
     NOTIFICATIONS:  '/api/notifications',
     TEAM:           '/api/team',
+    TEAM_INVITE:    '/api/team/invite',
     TICKETS:        '/api/tickets',
     DOCS:           '/api/docs',
   },

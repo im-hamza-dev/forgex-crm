@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DashboardShell } from '@/components/layout'
-import { Avatar, Button } from '@/components/ui'
+import { Avatar, Button, toast } from '@/components/ui'
+import { INVITE_ROLE_OPTIONS, ROLE_LABELS, type TeamRole } from '@/constants/roles'
+import { ROUTES } from '@/constants/routes'
 
 const TEAM_MEMBERS = [
   {
@@ -36,19 +38,67 @@ const TEAM_MEMBERS = [
   },
 ]
 
-const ROLE_BADGE: Record<string, { label: string; bg: string; text: string }> =
-  {
-    admin: {
-      label: 'Admin',
-      bg: 'var(--color-accent-subtle)',
-      text: 'var(--color-accent)',
-    },
-    manager: { label: 'Manager', bg: '#EEF3FA', text: '#1A3D6B' },
-    member: { label: 'Member', bg: '#F5F5F5', text: '#6B6B6B' },
-  }
+const ROLE_BADGE: Record<
+  TeamRole,
+  { label: string; bg: string; text: string }
+> = {
+  admin: {
+    label: ROLE_LABELS.admin,
+    bg: 'var(--color-accent-subtle)',
+    text: 'var(--color-accent)',
+  },
+  manager: {
+    label: ROLE_LABELS.manager,
+    bg: '#EEF3FA',
+    text: '#1A3D6B',
+  },
+  member: {
+    label: ROLE_LABELS.member,
+    bg: '#F5F5F5',
+    text: '#6B6B6B',
+  },
+}
 
 export default function TeamPage() {
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviteRole, setInviteRole] = useState<'manager' | 'member'>('member')
+
+  const resetInviteForm = () => {
+    setInviteEmail('')
+    setInviteName('')
+    setInviteRole('member')
+  }
+
+  const handleInvite = async () => {
+    if (!inviteEmail || !inviteName) return
+    setInviteLoading(true)
+    try {
+      const res = await fetch(ROUTES.API.TEAM_INVITE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail,
+          full_name: inviteName,
+          role: inviteRole,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        toast.error(data.error ?? 'Failed to send invite')
+        return
+      }
+      toast.success(`Invite sent to ${inviteEmail}`)
+      setInviteOpen(false)
+      resetInviteForm()
+    } catch {
+      toast.error('Something went wrong')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
 
   return (
     <DashboardShell title="Team" notificationCount={3}>
@@ -100,7 +150,7 @@ export default function TeamPage() {
           </thead>
           <tbody>
             {TEAM_MEMBERS.map((member, i) => {
-              const roleBadge = ROLE_BADGE[member.role]!
+              const roleBadge = ROLE_BADGE[member.role]
               return (
                 <tr
                   key={member.id}
@@ -193,7 +243,10 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-[rgba(26,16,8,0.5)]"
-            onClick={() => setInviteOpen(false)}
+            onClick={() => {
+              setInviteOpen(false)
+              resetInviteForm()
+            }}
           />
           <div className="relative z-10 w-full max-w-[420px] bg-[var(--color-surface)] rounded-2xl shadow-[0_16px_48px_rgba(26,16,8,0.16)]">
             <div
@@ -208,7 +261,10 @@ export default function TeamPage() {
               </h2>
               <button
                 type="button"
-                onClick={() => setInviteOpen(false)}
+                onClick={() => {
+                  setInviteOpen(false)
+                  resetInviteForm()
+                }}
                 className="flex items-center justify-center w-8 h-8 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
                 aria-label="Close"
               >
@@ -221,10 +277,31 @@ export default function TeamPage() {
                   className="block text-[11px] font-semibold uppercase tracking-[0.06em] mb-1.5"
                   style={{ color: 'var(--color-text-muted)' }}
                 >
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="Sara Ahmed"
+                  className="w-full h-[40px] px-3 rounded-lg text-[13px] border outline-none placeholder:text-[var(--color-text-muted)] border-[var(--color-border)] focus:border-[var(--color-accent)]"
+                  style={{
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text-body)',
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-[11px] font-semibold uppercase tracking-[0.06em] mb-1.5"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
                   Email *
                 </label>
                 <input
                   type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="colleague@forgex.systems"
                   className="w-full h-[40px] px-3 rounded-lg text-[13px] border outline-none placeholder:text-[var(--color-text-muted)] border-[var(--color-border)] focus:border-[var(--color-accent)]"
                   style={{
@@ -241,15 +318,21 @@ export default function TeamPage() {
                   Role
                 </label>
                 <select
+                  value={inviteRole}
+                  onChange={(e) =>
+                    setInviteRole(e.target.value as 'manager' | 'member')
+                  }
                   className="w-full h-[40px] px-3 rounded-lg text-[13px] border outline-none appearance-none border-[var(--color-border)] focus:border-[var(--color-accent)]"
                   style={{
                     background: 'var(--color-surface)',
                     color: 'var(--color-text-body)',
                   }}
                 >
-                  <option value="member">Member</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
+                  {INVITE_ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -260,17 +343,19 @@ export default function TeamPage() {
               <Button
                 variant="ghost"
                 size="md"
-                onClick={() => setInviteOpen(false)}
+                onClick={() => {
+                  setInviteOpen(false)
+                  resetInviteForm()
+                }}
               >
                 Cancel
               </Button>
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => {
-                  console.log('Invite sent')
-                  setInviteOpen(false)
-                }}
+                loading={inviteLoading}
+                disabled={!inviteEmail || !inviteName}
+                onClick={() => void handleInvite()}
               >
                 Send Invite
               </Button>
