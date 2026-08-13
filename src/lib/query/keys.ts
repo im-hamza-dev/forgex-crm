@@ -27,8 +27,16 @@ export const queryKeys = {
   },
 
   // Tasks
-  tasks: ['tasks'] as const,
-  task: (id: string) => ['tasks', id] as const,
+  tasks: {
+    all: ['tasks'] as const,
+    list: (filters: Record<string, unknown> = {}) =>
+      ['tasks', 'list', filters] as const,
+    detail: (id: string) => ['tasks', 'detail', id] as const,
+    comments: (id: string) => ['tasks', id, 'comments'] as const,
+    byProject: (projectId: string) =>
+      ['tasks', 'project', projectId] as const,
+  },
+  task: (id: string) => ['tasks', 'detail', id] as const,
 
   // Blog
   blogPosts: ['blog'] as const,

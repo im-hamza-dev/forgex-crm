@@ -1,12 +1,20 @@
 'use client'
 
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import { useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { cn } from '@/lib/utils'
-import { Button, Select } from '@/components/ui'
+import { Button, Select, toast } from '@/components/ui'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
+import { useProjects } from '@/hooks/useProjects'
+import { useCreateProjectTask, useCreateTask } from '@/hooks/useTasks'
+import {
+  canAssignTask,
+  canLinkToProject,
+} from '@/lib/task-permissions'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -22,7 +30,7 @@ type FormValues = z.infer<typeof schema>
 interface NewTaskModalProps {
   open: boolean
   onClose: () => void
-  onSubmit?: (values: FormValues) => void
+  defaultProjectId?: string
 }
 
 function ModalFieldLabel({
@@ -75,28 +83,105 @@ function ModalInput({
   )
 }
 
-export function NewTaskModal({ open, onClose, onSubmit }: NewTaskModalProps) {
+export function NewTaskModal({
+  open,
+  onClose,
+  defaultProjectId,
+}: NewTaskModalProps) {
+  const { profile } = useAuth()
+  const showAssign = canAssignTask(profile)
+  const showProject = canLinkToProject(profile)
+  const { data: projects = [] } = useProjects()
+  const createTask = useCreateTask()
+  const createProjectTask = useCreateProjectTask()
+
+  const [teamOptions, setTeamOptions] = useState<
+    { value: string; label: string }[]
+  >([{ value: '', label: 'Unassigned' }])
+
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { priority: 'low' },
+    defaultValues: {
+      priority: 'medium',
+      project_id: defaultProjectId ?? '',
+      assigned_to: '',
+    },
   })
+
+  useEffect(() => {
+    if (!open || !showAssign) return
+    const supabase = createClient()
+    void supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('is_active', true)
+      .then(({ data }) => {
+        setTeamOptions([
+          { value: '', label: 'Unassigned' },
+          ...(data ?? []).map((p) => ({
+            value: p.id,
+            label: p.full_name ?? p.id,
+          })),
+        ])
+      })
+  }, [open, showAssign])
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        title: '',
+        description: '',
+        priority: 'medium',
+        project_id: defaultProjectId ?? '',
+        assigned_to: '',
+        due_date: '',
+      })
+    }
+  }, [open, defaultProjectId, reset])
 
   const handleClose = () => {
     reset()
     onClose()
   }
 
-  const onFormSubmit = (values: FormValues) => {
-    onSubmit?.(values)
-    handleClose()
+  const onFormSubmit = async (values: FormValues) => {
+    try {
+      const payload = {
+        title: values.title,
+        description: values.description || undefined,
+        priority: values.priority,
+        due_date: values.due_date || undefined,
+        assigned_to: values.assigned_to || undefined,
+        project_id: values.project_id || undefined,
+      }
+
+      if (defaultProjectId) {
+        await createProjectTask.mutateAsync({
+          projectId: defaultProjectId,
+          title: payload.title,
+          description: payload.description,
+          priority: payload.priority,
+          due_date: payload.due_date,
+          assigned_to: payload.assigned_to,
+        })
+      } else {
+        await createTask.mutateAsync(payload)
+      }
+      toast.success('Task created')
+      handleClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create task')
+    }
   }
 
   if (!open) return null
+
+  const isPending = createTask.isPending || createProjectTask.isPending
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -151,33 +236,35 @@ export function NewTaskModal({ open, onClose, onSubmit }: NewTaskModalProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <ModalFieldLabel>Project</ModalFieldLabel>
-              <Select
-                options={[
-                  { value: '', label: 'None' },
-                  { value: '2', label: 'Patient Acquisition System' },
-                  { value: '3', label: 'B2B Pipeline OS' },
-                  { value: '1', label: 'Coaching Growth Platform' },
-                  { value: '4', label: 'Tax AI MVP' },
-                ]}
-                {...register('project_id')}
-              />
+          {(showProject || showAssign) && (
+            <div className="grid grid-cols-2 gap-3">
+              {showProject && (
+                <div>
+                  <ModalFieldLabel>Project</ModalFieldLabel>
+                  <Select
+                    options={[
+                      { value: '', label: 'None' },
+                      ...projects.map((p) => ({
+                        value: p.id,
+                        label: p.name,
+                      })),
+                    ]}
+                    disabled={Boolean(defaultProjectId)}
+                    {...register('project_id')}
+                  />
+                </div>
+              )}
+              {showAssign && (
+                <div className={showProject ? undefined : 'col-span-2'}>
+                  <ModalFieldLabel>Assigned To</ModalFieldLabel>
+                  <Select
+                    options={teamOptions}
+                    {...register('assigned_to')}
+                  />
+                </div>
+              )}
             </div>
-            <div>
-              <ModalFieldLabel>Assigned To</ModalFieldLabel>
-              <Select
-                options={[
-                  { value: '', label: 'Unassigned' },
-                  { value: 'user-hi', label: 'Hamza Iqbal' },
-                  { value: 'user-sa', label: 'Sara Ahmed' },
-                  { value: 'user-zm', label: 'Zain Malik' },
-                ]}
-                {...register('assigned_to')}
-              />
-            </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -228,7 +315,7 @@ export function NewTaskModal({ open, onClose, onSubmit }: NewTaskModalProps) {
             size="md"
             type="submit"
             form="new-task-form"
-            loading={isSubmitting}
+            loading={isPending}
           >
             Create Task
           </Button>

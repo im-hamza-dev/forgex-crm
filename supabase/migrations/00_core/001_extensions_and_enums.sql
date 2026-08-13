@@ -74,7 +74,7 @@ create type payment_status as enum ('pending', 'partial', 'paid', 'overdue');
 -- ============================================================
 -- ENUM: task status
 -- ============================================================
-create type task_status as enum ('todo', 'in_progress', 'done');
+create type task_status as enum ('todo', 'in_progress', 'review', 'done');
 
 -- ============================================================
 -- ENUM: task priority

@@ -12,6 +12,7 @@ export const TASK_STATUS_CONFIG: Record<string, {
 }> = {
   todo:        { label: 'Todo',        dotColor: '#9CA3AF', textColor: '#6B6B6B' },
   in_progress: { label: 'In Progress', dotColor: '#1A3D6B', textColor: '#1A3D6B' },
+  review:      { label: 'Review',      dotColor: '#8B5E00', textColor: '#8B5E00' },
   done:        { label: 'Done',        dotColor: '#2D6A2D', textColor: '#2D6A2D' },
 }
 

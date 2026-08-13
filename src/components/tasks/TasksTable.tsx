@@ -1,31 +1,40 @@
 'use client'
 
 import { useState } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Avatar } from '@/components/ui'
 import {
   TASK_PRIORITY_CONFIG,
   TASK_STATUS_CONFIG,
-  getProjectTagColor,
 } from '@/constants/task-config'
+import { useAuth } from '@/hooks/useAuth'
+import { canDeleteTask } from '@/lib/task-permissions'
 import type { Task } from '@/types/tasks'
 
 interface TasksTableProps {
   tasks: Task[]
   onTaskClick?: (task: Task) => void
+  onEdit?: (task: Task) => void
+  onDelete?: (task: Task) => void
+  onToggleDone?: (task: Task, done: boolean) => void
 }
 
-export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
-  const [checked, setChecked] = useState<Set<string>>(
-    new Set(tasks.filter((t) => t.status === 'done').map((t) => t.id)),
-  )
+function isOverdue(task: Task): boolean {
+  if (!task.due_date || task.status === 'done') return false
+  const today = new Date().toISOString().split('T')[0]!
+  return task.due_date < today
+}
 
-  const toggleCheck = (id: string) => {
-    const next = new Set(checked)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setChecked(next)
-  }
+export function TasksTable({
+  tasks,
+  onTaskClick,
+  onEdit,
+  onDelete,
+  onToggleDone,
+}: TasksTableProps) {
+  const { profile } = useAuth()
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
 
   return (
     <div
@@ -38,8 +47,9 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
             <th className="w-12 pl-5 py-3" />
             {[
               { label: 'Title', cls: 'text-left' },
-              { label: 'Project', cls: 'text-left w-[180px]' },
-              { label: 'Priority', cls: 'text-left w-[120px]' },
+              { label: 'Project', cls: 'text-left w-[160px]' },
+              { label: 'Assignee', cls: 'text-left w-[150px]' },
+              { label: 'Priority', cls: 'text-left w-[110px]' },
               { label: 'Due', cls: 'text-left w-[110px]' },
               { label: 'Status', cls: 'text-left w-[120px]' },
               { label: '', cls: 'w-10 pr-4' },
@@ -59,16 +69,11 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
         </thead>
         <tbody>
           {tasks.map((task, i) => {
-            const isChecked = checked.has(task.id)
             const priority = TASK_PRIORITY_CONFIG[task.priority]
             const status = TASK_STATUS_CONFIG[task.status]
-            const projectColor = getProjectTagColor(task.project_name)
-
-            const shortProjectName =
-              task.project_name
-                ?.replace(' System', '')
-                ?.replace(' Platform', '')
-                ?.replace(' MVP', '') ?? null
+            const overdue = isOverdue(task)
+            const assigneeName = task.assigned_profile?.full_name
+            const canDelete = canDeleteTask(profile, task)
 
             return (
               <tr
@@ -88,8 +93,10 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
                 >
                   <input
                     type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleCheck(task.id)}
+                    checked={task.status === 'done'}
+                    onChange={(e) =>
+                      onToggleDone?.(task, e.target.checked)
+                    }
                     className="w-4 h-4 rounded accent-[var(--color-accent)] cursor-pointer"
                     aria-label={`Complete: ${task.title}`}
                   />
@@ -97,30 +104,53 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
 
                 <td className="py-4 pr-4">
                   <span
-                    className="text-[14px] font-medium"
+                    className={cn(
+                      'text-[14px] font-medium',
+                      task.status === 'done' && 'line-through opacity-70',
+                    )}
                     style={{ color: 'var(--color-text-heading)' }}
                   >
                     {task.title}
                   </span>
                 </td>
 
-                <td className="py-4 pr-4 w-[180px]">
-                  {task.project_name ? (
+                <td className="py-4 pr-4 w-[160px]">
+                  {task.project?.name ? (
                     <span
-                      className="inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold truncate max-w-[160px]"
+                      className="inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold truncate max-w-[140px]"
                       style={{
-                        background: projectColor.bg,
-                        color: projectColor.text,
+                        background: 'var(--color-accent-subtle)',
+                        color: 'var(--color-accent)',
                       }}
                     >
-                      {shortProjectName ?? task.project_name}
+                      {task.project.name}
                     </span>
                   ) : (
                     <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                   )}
                 </td>
 
-                <td className="py-4 pr-4 w-[120px]">
+                <td className="py-4 pr-4 w-[150px]">
+                  {assigneeName ? (
+                    <span className="flex items-center gap-2">
+                      <Avatar
+                        name={assigneeName}
+                        src={task.assigned_profile?.avatar_url}
+                        size="xs"
+                      />
+                      <span
+                        className="text-[13px] truncate"
+                        style={{ color: 'var(--color-text-body)' }}
+                      >
+                        {assigneeName}
+                      </span>
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+                  )}
+                </td>
+
+                <td className="py-4 pr-4 w-[110px]">
                   <span className="flex items-center gap-1.5">
                     <span
                       className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -140,7 +170,11 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
                 <td className="py-4 pr-4 w-[110px]">
                   <span
                     className="text-[13px] tabular-nums"
-                    style={{ color: 'var(--color-text-muted)' }}
+                    style={{
+                      color: overdue
+                        ? 'var(--color-danger)'
+                        : 'var(--color-text-muted)',
+                    }}
                   >
                     {task.due_date ?? '—'}
                   </span>
@@ -158,7 +192,7 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
                 </td>
 
                 <td
-                  className="pr-4 w-10"
+                  className="pr-4 w-10 relative"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -170,9 +204,46 @@ export function TasksTable({ tasks, onTaskClick }: TasksTableProps) {
                     )}
                     style={{ color: 'var(--color-text-muted)' }}
                     aria-label="Task actions"
+                    onClick={() =>
+                      setMenuOpenId(menuOpenId === task.id ? null : task.id)
+                    }
                   >
                     <MoreHorizontal size={14} />
                   </button>
+                  {menuOpenId === task.id && (
+                    <div
+                      className={cn(
+                        'absolute right-4 top-10 z-20 min-w-[120px]',
+                        'bg-[var(--color-surface)] border border-[var(--color-border)]',
+                        'rounded-lg shadow-lg py-1',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-[var(--color-text-body)] hover:bg-[var(--color-surface-hover)]"
+                        onClick={() => {
+                          setMenuOpenId(null)
+                          onEdit?.(task)
+                        }}
+                      >
+                        <Pencil size={12} />
+                        Edit
+                      </button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]"
+                          onClick={() => {
+                            setMenuOpenId(null)
+                            onDelete?.(task)
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </td>
               </tr>
             )

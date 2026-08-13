@@ -10,8 +10,18 @@ interface TaskCardProps {
   onClick?: () => void
 }
 
+function isOverdue(task: Task): boolean {
+  if (!task.due_date || task.status === 'done') return false
+  const today = new Date().toISOString().split('T')[0]!
+  return task.due_date < today
+}
+
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = TASK_PRIORITY_CONFIG[task.priority]
+  const assigneeName = task.assigned_profile?.full_name
+  const subtotal = task.subtask_count ?? 0
+  const subdone = task.subtask_done_count ?? 0
+  const overdue = isOverdue(task)
 
   return (
     <div
@@ -27,21 +37,37 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         'cursor-pointer select-none',
         'transition-shadow hover:shadow-[0_2px_8px_rgba(26,16,8,0.08)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
+        task.status === 'done' && 'opacity-70',
       )}
     >
       <p
-        className="text-[14px] font-semibold mb-1.5 leading-snug"
+        className={cn(
+          'text-[14px] font-semibold mb-1.5 leading-snug',
+          task.status === 'done' && 'line-through',
+        )}
         style={{ color: 'var(--color-text-heading)' }}
       >
         {task.title}
       </p>
 
-      {task.subtask_total > 0 && (
+      {task.project?.name && (
+        <span
+          className="inline-block mb-2 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+          style={{
+            background: 'var(--color-accent-subtle)',
+            color: 'var(--color-accent)',
+          }}
+        >
+          {task.project.name}
+        </span>
+      )}
+
+      {subtotal > 0 && (
         <p
           className="text-[12px] mb-2"
           style={{ color: 'var(--color-text-muted)' }}
         >
-          {task.subtask_done}/{task.subtask_total} subtasks
+          {subdone}/{subtotal} subtasks
         </p>
       )}
 
@@ -60,17 +86,21 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         </span>
 
         <span className="flex items-center gap-2">
-          {task.assignee_name && (
+          {assigneeName && (
             <Avatar
-              name={task.assignee_name}
-              src={task.assignee_avatar}
+              name={assigneeName}
+              src={task.assigned_profile?.avatar_url}
               size="xs"
             />
           )}
           {task.due_date && (
             <span
               className="text-[11px] tabular-nums"
-              style={{ color: 'var(--color-text-muted)' }}
+              style={{
+                color: overdue
+                  ? 'var(--color-danger)'
+                  : 'var(--color-text-muted)',
+              }}
             >
               {task.due_date}
             </span>

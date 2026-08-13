@@ -1,14 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Avatar, Button, toast } from '@/components/ui'
-import { TASK_PRIORITY_CONFIG } from '@/constants/project-status'
-import { useProjectTasks } from '@/hooks/useProjects'
-import type { Project, ProjectTaskRow } from '@/types/projects'
-import type { Database } from '@/types/database.types'
-
-type TaskStatus = Database['public']['Enums']['task_status']
+import { Avatar, Button, Select } from '@/components/ui'
+import { TaskDrawer, NewTaskModal } from '@/components/tasks'
+import { TASK_PRIORITY_CONFIG } from '@/constants/task-config'
+import { useProjectMilestones } from '@/hooks/useProjects'
+import { useProjectTasks } from '@/hooks/useTasks'
+import type { Project } from '@/types/projects'
+import type { Task, TaskStatus } from '@/types/tasks'
 
 const TASK_COLUMNS: {
   status: TaskStatus
@@ -21,18 +22,30 @@ const TASK_COLUMNS: {
     label: 'In Progress',
     dotColor: 'var(--color-accent)',
   },
+  { status: 'review', label: 'Review', dotColor: '#8B5E00' },
   { status: 'done', label: 'Done', dotColor: 'var(--color-success)' },
 ]
 
-function TaskCard({ task }: { task: ProjectTaskRow }) {
+function ProjectTaskCard({
+  task,
+  onClick,
+}: {
+  task: Task
+  onClick: () => void
+}) {
   const priority = TASK_PRIORITY_CONFIG[task.priority]
-  const assigneeName = task.assignee?.full_name
+  const assigneeName = task.assigned_profile?.full_name
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
       className={cn(
-        'bg-[var(--color-surface)] border rounded-[10px] p-3.5',
+        'bg-[var(--color-surface)] border rounded-[10px] p-3.5 cursor-pointer',
         'transition-shadow hover:shadow-[0_2px_8px_rgba(26,16,8,0.08)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
       )}
       style={{ borderColor: 'var(--color-border)' }}
     >
@@ -59,7 +72,7 @@ function TaskCard({ task }: { task: ProjectTaskRow }) {
           {assigneeName && (
             <Avatar
               name={assigneeName}
-              src={task.assignee?.avatar_url}
+              src={task.assigned_profile?.avatar_url}
               size="xs"
             />
           )}
@@ -79,11 +92,20 @@ function TaskCard({ task }: { task: ProjectTaskRow }) {
 
 export function ProjectTasksTab({ project }: { project: Project }) {
   const { data: tasks = [], isLoading } = useProjectTasks(project.id)
+  const { data: milestones = [] } = useProjectMilestones(project.id)
+  const [milestoneFilter, setMilestoneFilter] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [drawerTaskId, setDrawerTaskId] = useState<string | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const filtered = milestoneFilter
+    ? tasks.filter((t) => t.milestone_id === milestoneFilter)
+    : tasks
 
   if (isLoading) {
     return (
       <div className="flex gap-4">
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
             className="flex-1 h-[220px] rounded-xl animate-pulse bg-[var(--color-surface-hover)] border border-[var(--color-border)]"
@@ -95,20 +117,33 @@ export function ProjectTasksTab({ project }: { project: Project }) {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        {milestones.length > 0 ? (
+          <Select
+            options={[
+              { value: '', label: 'All milestones' },
+              ...milestones.map((m) => ({ value: m.id, label: m.title })),
+            ]}
+            value={milestoneFilter}
+            onChange={(e) => setMilestoneFilter(e.target.value)}
+            className="w-[200px]"
+          />
+        ) : (
+          <div />
+        )}
         <Button
           variant="primary"
           size="sm"
           icon={<Plus size={14} />}
-          onClick={() => toast.info('Coming soon')}
+          onClick={() => setModalOpen(true)}
         >
           New Task
         </Button>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-2">
         {TASK_COLUMNS.map((col) => {
-          const columnTasks = tasks.filter((t) => t.status === col.status)
+          const columnTasks = filtered.filter((t) => t.status === col.status)
           return (
             <div key={col.status} className="flex-1 min-w-[200px]">
               <div className="flex items-center gap-2 mb-3">
@@ -132,7 +167,14 @@ export function ProjectTasksTab({ project }: { project: Project }) {
 
               <div className="flex flex-col gap-2">
                 {columnTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
+                  <ProjectTaskCard
+                    key={task.id}
+                    task={task}
+                    onClick={() => {
+                      setDrawerTaskId(task.id)
+                      setDrawerOpen(true)
+                    }}
+                  />
                 ))}
                 {columnTasks.length === 0 && (
                   <p
@@ -147,6 +189,22 @@ export function ProjectTasksTab({ project }: { project: Project }) {
           )
         })}
       </div>
+
+      <NewTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        defaultProjectId={project.id}
+      />
+
+      <TaskDrawer
+        taskId={drawerTaskId}
+        open={drawerOpen}
+        onClose={() => {
+          setDrawerOpen(false)
+          setDrawerTaskId(null)
+        }}
+        projectId={project.id}
+      />
     </div>
   )
 }
