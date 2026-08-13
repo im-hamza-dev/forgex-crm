@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tabs } from '@/components/ui'
 import { getStage } from '@/constants/lead-stages'
+import { useAuth } from '@/hooks/useAuth'
+import { canCreateProject } from '@/lib/project-permissions'
 import type { Lead } from '@/types/leads'
 import { LeadDrawerOverview } from './LeadDrawerOverview'
 import { LeadDrawerConversation } from './LeadDrawerConversation'
@@ -46,14 +49,30 @@ export function LeadDrawer({
   onDelete,
   isDeleting = false,
 }: LeadDrawerProps) {
+  const router = useRouter()
+  const { profile } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const showConvert = canCreateProject(profile)
 
   if (!open || !lead) return null
 
   const stage = getStage(lead.stage)
   const priorityColor = PRIORITY_COLORS[lead.priority] ?? 'var(--color-warning)'
   const priorityLabel = PRIORITY_LABELS[lead.priority] ?? 'Warm'
+
+  const handleConvert = () => {
+    if (onConvert) {
+      onConvert(lead)
+      return
+    }
+    const params = new URLSearchParams()
+    params.set('lead_id', lead.id)
+    params.set('name', lead.company ?? lead.contact_name)
+    if (lead.service_interest) params.set('service_type', lead.service_interest)
+    if (lead.budget_range) params.set('budget', lead.budget_range)
+    router.push(`/projects/new?${params.toString()}`)
+  }
 
   return (
     <>
@@ -110,32 +129,55 @@ export function LeadDrawer({
           </span>
         </div>
 
-        {onDelete && (
+        {(onDelete ||
+          (showConvert &&
+            !lead.converted_project_id &&
+            lead.stage !== 'won' &&
+            lead.stage !== 'lost') ||
+          lead.converted_project_id) && (
           <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--color-border)] shrink-0">
-            {onConvert && (
+            {showConvert &&
+              !lead.converted_project_id &&
+              lead.stage !== 'won' &&
+              lead.stage !== 'lost' && (
+                <button
+                  type="button"
+                  onClick={handleConvert}
+                  className={cn(
+                    'h-[34px] px-4 rounded-lg text-[13px] font-semibold text-white',
+                    'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]',
+                    'transition-colors',
+                  )}
+                >
+                  Convert to Project
+                </button>
+              )}
+            {(lead.converted_project_id || lead.stage === 'won') &&
+              lead.converted_project_id && (
+              <a
+                href={`/projects/${lead.converted_project_id}`}
+                className={cn(
+                  'flex items-center gap-1.5 h-[34px] px-4 rounded-lg text-[13px] font-medium',
+                  'border border-[var(--color-border)] text-[var(--color-text-body)]',
+                  'hover:bg-[var(--color-surface-hover)] transition-colors',
+                )}
+              >
+                View Project →
+              </a>
+            )}
+            {onDelete && (
               <button
                 type="button"
-                onClick={() => onConvert(lead)}
+                onClick={() => setConfirmDelete(true)}
                 className={cn(
-                  'h-[34px] px-4 rounded-lg text-[13px] font-semibold text-white',
-                  'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]',
+                  'h-[34px] px-4 rounded-lg text-[13px] font-medium ml-auto',
+                  'text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]',
                   'transition-colors',
                 )}
               >
-                Convert to Project
+                Delete
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className={cn(
-                'h-[34px] px-4 rounded-lg text-[13px] font-medium ml-auto',
-                'text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]',
-                'transition-colors',
-              )}
-            >
-              Delete
-            </button>
           </div>
         )}
 
@@ -164,9 +206,7 @@ export function LeadDrawer({
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmDelete(false)}
           />
-          <div
-            className="relative z-10 bg-[var(--color-surface)] rounded-2xl shadow-xl p-6 w-[340px] flex flex-col gap-4"
-          >
+          <div className="relative z-10 bg-[var(--color-surface)] rounded-2xl shadow-xl p-6 w-[340px] flex flex-col gap-4">
             <h3 className="text-[16px] font-bold text-[var(--color-text-heading)]">
               Delete lead?
             </h3>

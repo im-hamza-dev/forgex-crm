@@ -50,12 +50,19 @@ export default function LeadsPage() {
     [debouncedSearch, stageFilter, priorityFilter, statusFilter],
   )
 
-  const { data: leads = [], isLoading, isError, error } = useLeads(filters)
+  const { data: leads = [], isLoading, isError, error, refetch } =
+    useLeads(filters)
   const createLead = useCreateLead()
   const deleteLead = useDeleteLead()
 
   const selectedLead =
     leads.find((l) => l.id === selectedLeadId) ?? null
+
+  useEffect(() => {
+    if (drawerOpen) {
+      void refetch()
+    }
+  }, [drawerOpen, refetch])
 
   const handleLeadClick = (lead: Lead) => {
     setSelectedLeadId(lead.id)

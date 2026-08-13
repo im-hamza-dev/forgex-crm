@@ -1,76 +1,75 @@
-export type ProjectStatus =
-  | 'discovery'
-  | 'in_progress'
-  | 'review'
-  | 'delivered'
-  | 'retainer'
-  | 'on_hold'
+import type { Database } from './database.types'
 
-export type PaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue'
-export type TaskStatus = 'todo' | 'in_progress' | 'done'
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
-
-export interface ProjectMember {
-  id: string
-  name: string
-  avatar_url: string | null
-  role: string
+export type Project = Database['public']['Tables']['projects']['Row'] & {
+  client_account?: {
+    id: string
+    full_name: string
+    company: string | null
+    email: string
+    status: string
+  } | null
+  members?: ProjectMember[]
 }
 
-export interface ProjectTask {
+export type ProjectInsert = Database['public']['Tables']['projects']['Insert']
+export type ProjectUpdate = Database['public']['Tables']['projects']['Update']
+
+export type ProjectMember = {
   id: string
-  title: string
-  status: TaskStatus
-  priority: TaskPriority
-  assignee_name: string | null
-  assignee_avatar: string | null
-  due_date: string | null
+  project_id: string
+  user_id: string
+  added_at: string
+  profile?: {
+    full_name: string | null
+    avatar_url: string | null
+    role: string
+  } | null
 }
 
-export interface ProjectMilestone {
-  id: string
-  title: string
-  due_date: string
-  completed_at: string | null
-}
+export type ProjectMilestone =
+  Database['public']['Tables']['project_milestones']['Row'] & {
+    creator?: { full_name: string | null; avatar_url: string | null } | null
+  }
 
-export interface ProjectUpdate {
-  id: string
-  author_name: string
-  author_avatar: string | null
-  content: string
-  is_client_visible: boolean
-  created_at: string
-  time_ago: string
-}
+export type ProjectFeedUpdate =
+  Database['public']['Tables']['project_updates']['Row'] & {
+    author?: { full_name: string | null; avatar_url: string | null } | null
+  }
 
-export interface ProjectFile {
-  id: string
-  file_name: string
-  file_size: string
-  uploaded_at: string
-  is_client_visible: boolean
-  mime_type: string
-}
+/** Alias matching prompt naming */
+export type ProjectUpdate2 = ProjectFeedUpdate
 
-export interface Project {
-  id: string
-  name: string
-  description: string | null
-  client_name: string | null
-  service_type: string | null
-  status: ProjectStatus
-  payment_status: PaymentStatus
-  fixed_price: number | null
-  currency: string
-  start_date: string | null
-  deadline: string | null
-  completion_pct: number
-  is_client_visible: boolean
-  team: ProjectMember[]
-  tasks: ProjectTask[]
-  milestones: ProjectMilestone[]
-  updates: ProjectUpdate[]
-  files: ProjectFile[]
-  created_at: string
+export type ProjectFile =
+  Database['public']['Tables']['project_files']['Row'] & {
+    uploader?: { full_name: string | null; avatar_url: string | null } | null
+  }
+
+export type ClientTicket =
+  Database['public']['Tables']['client_tickets']['Row'] & {
+    client_account?: {
+      full_name: string
+      company: string | null
+      email: string
+    } | null
+    messages?: TicketMessage[]
+  }
+
+export type TicketMessage =
+  Database['public']['Tables']['client_ticket_messages']['Row'] & {
+    team_sender?: {
+      full_name: string | null
+      avatar_url: string | null
+    } | null
+    client_sender?: { full_name: string | null } | null
+  }
+
+export type ProjectStatus = Database['public']['Enums']['project_status']
+export type PaymentStatus = Database['public']['Enums']['payment_status']
+export type ServiceType = Database['public']['Enums']['service_type']
+
+export type ProjectTaskRow = Database['public']['Tables']['tasks']['Row'] & {
+  assignee?: {
+    full_name: string | null
+    avatar_url: string | null
+  } | null
 }

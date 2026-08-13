@@ -41,6 +41,7 @@ export function useLeads(filters?: LeadFilters) {
       })
       return res.data
     },
+    refetchOnWindowFocus: true,
   })
 }
 

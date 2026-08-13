@@ -13,6 +13,7 @@ export const PROJECT_STATUSES: ProjectStatusConfig[] = [
   { value: 'delivered',   label: 'Delivered',   dotColor: '#2D6A2D', badgeBg: '#EDF5ED', badgeText: '#2D6A2D' },
   { value: 'retainer',    label: 'Retainer',    dotColor: '#9c6644', badgeBg: '#F5EDE6', badgeText: '#9c6644' },
   { value: 'on_hold',     label: 'On Hold',     dotColor: '#9CA3AF', badgeBg: '#F5F5F5', badgeText: '#6B6B6B' },
+  { value: 'cancelled',   label: 'Cancelled',   dotColor: '#8B1A1A', badgeBg: '#FDF0F0', badgeText: '#8B1A1A' },
 ]
 
 export function getProjectStatus(value: string): ProjectStatusConfig {

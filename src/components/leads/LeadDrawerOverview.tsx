@@ -558,23 +558,33 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
               <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)] mb-1">
                 Stage
               </p>
-              <select
-                value={draft.stage}
-                disabled={updateLead.isPending}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    stage: e.target.value as Lead['stage'],
-                  }))
-                }
-                className="w-full h-[36px] px-2 rounded-lg text-[13px] border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-50"
-              >
-                {LEAD_STAGES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+              {lead.stage === 'won' || lead.stage === 'lost' ? (
+                <div
+                  className="w-full h-[36px] px-2.5 rounded-lg text-[13px] border border-[var(--color-border)] bg-[var(--color-surface-hover)] flex items-center gap-2"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  <span>{lead.stage === 'won' ? 'Won' : 'Lost'}</span>
+                  <span className="text-[11px]">— locked</span>
+                </div>
+              ) : (
+                <select
+                  value={draft.stage}
+                  disabled={updateLead.isPending}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      stage: e.target.value as Lead['stage'],
+                    }))
+                  }
+                  className="w-full h-[36px] px-2 rounded-lg text-[13px] border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-50"
+                >
+                  {LEAD_STAGES.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 

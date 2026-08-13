@@ -11,6 +11,14 @@ interface ProjectsTableProps {
   onProjectClick: (project: Project) => void
 }
 
+function clientLabel(project: Project): string {
+  return (
+    project.client_account?.company ??
+    project.client_account?.full_name ??
+    '—'
+  )
+}
+
 export function ProjectsTable({ projects, onProjectClick }: ProjectsTableProps) {
   return (
     <div
@@ -45,6 +53,7 @@ export function ProjectsTable({ projects, onProjectClick }: ProjectsTableProps) 
         <tbody>
           {projects.map((project, i) => {
             const status = getProjectStatus(project.status)
+            const members = project.members ?? []
 
             return (
               <tr
@@ -72,7 +81,7 @@ export function ProjectsTable({ projects, onProjectClick }: ProjectsTableProps) 
                     className="text-[13px]"
                     style={{ color: 'var(--color-text-secondary)' }}
                   >
-                    {project.client_name ?? '—'}
+                    {clientLabel(project)}
                   </p>
                 </td>
 
@@ -122,19 +131,22 @@ export function ProjectsTable({ projects, onProjectClick }: ProjectsTableProps) 
 
                 <td className="py-4 pr-4 w-[100px]">
                   <div className="flex items-center">
-                    {project.team.slice(0, 3).map((member, mi) => (
-                      <div
-                        key={member.id}
-                        className="ring-2 ring-white rounded-full"
-                        style={{ marginLeft: mi > 0 ? '-6px' : '0' }}
-                      >
-                        <Avatar
-                          name={member.name}
-                          src={member.avatar_url}
-                          size="xs"
-                        />
-                      </div>
-                    ))}
+                    {members.slice(0, 3).map((member, mi) => {
+                      const name = member.profile?.full_name ?? 'Member'
+                      return (
+                        <div
+                          key={member.id}
+                          className="ring-2 ring-white rounded-full"
+                          style={{ marginLeft: mi > 0 ? '-6px' : '0' }}
+                        >
+                          <Avatar
+                            name={name}
+                            src={member.profile?.avatar_url}
+                            size="xs"
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 </td>
 

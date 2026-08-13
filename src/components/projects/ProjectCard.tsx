@@ -18,7 +18,17 @@ const SERVICE_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
+function clientLabel(project: Project): string {
+  return (
+    project.client_account?.company ??
+    project.client_account?.full_name ??
+    '—'
+  )
+}
+
 export function ProjectCard({ project, onClick }: ProjectCardProps) {
+  const members = project.members ?? []
+
   return (
     <div
       role="button"
@@ -47,7 +57,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           className="text-[12px]"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          {project.client_name}
+          {clientLabel(project)}
         </span>
         {project.service_type && (
           <span
@@ -69,13 +79,6 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         >
           {project.completion_pct}% complete
         </span>
-        <span
-          className="text-[11px]"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          {project.tasks.filter((t) => t.status === 'done').length}/
-          {project.tasks.length} tasks
-        </span>
       </div>
 
       <div
@@ -96,18 +99,25 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           className="text-[11px] tabular-nums"
           style={{ color: 'var(--color-text-muted)' }}
         >
-          {project.deadline}
+          {project.deadline ?? '—'}
         </span>
         <div className="flex items-center">
-          {project.team.slice(0, 3).map((member, i) => (
-            <div
-              key={member.id}
-              className="ring-2 ring-white rounded-full"
-              style={{ marginLeft: i > 0 ? '-6px' : '0' }}
-            >
-              <Avatar name={member.name} src={member.avatar_url} size="xs" />
-            </div>
-          ))}
+          {members.slice(0, 3).map((member, i) => {
+            const name = member.profile?.full_name ?? 'Member'
+            return (
+              <div
+                key={member.id}
+                className="ring-2 ring-white rounded-full"
+                style={{ marginLeft: i > 0 ? '-6px' : '0' }}
+              >
+                <Avatar
+                  name={name}
+                  src={member.profile?.avatar_url}
+                  size="xs"
+                />
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

@@ -13,9 +13,18 @@ export const queryKeys = {
   },
 
   // Projects
-  projects: ['projects'] as const,
-  project: (id: string) => ['projects', id] as const,
-  projectTasks: (id: string) => ['projects', id, 'tasks'] as const,
+  projects: {
+    all: ['projects'] as const,
+    list: () => ['projects', 'list'] as const,
+    detail: (id: string) => ['projects', 'detail', id] as const,
+    milestones: (id: string) => ['projects', id, 'milestones'] as const,
+    updates: (id: string) => ['projects', id, 'updates'] as const,
+    files: (id: string) => ['projects', id, 'files'] as const,
+    tickets: (id: string) => ['projects', id, 'tickets'] as const,
+    tasks: (id: string) => ['projects', id, 'tasks'] as const,
+    ticketMessages: (ticketId: string) =>
+      ['projects', 'tickets', ticketId, 'messages'] as const,
+  },
 
   // Tasks
   tasks: ['tasks'] as const,
