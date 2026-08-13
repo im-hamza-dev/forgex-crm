@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { MoreHorizontal, Upload } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
 import { getStage } from '@/constants/lead-stages'
@@ -27,13 +26,13 @@ function ScoreDots({ score }: { score: number | null }) {
 }
 
 const PRIORITY_DOTS: Record<string, string> = {
-  hot:  '#8B1A1A',
+  hot: '#8B1A1A',
   warm: '#8B5E00',
   cold: '#1A3D6B',
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
-  hot:  'Hot',
+  hot: 'Hot',
   warm: 'Warm',
   cold: 'Cold',
 }
@@ -51,20 +50,6 @@ export function LeadsTable({
   searchQuery,
   onSearchChange,
 }: LeadsTableProps) {
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-
-  const toggleAll = () => {
-    if (selected.size === leads.length) setSelected(new Set())
-    else setSelected(new Set(leads.map((l) => l.id)))
-  }
-
-  const toggleOne = (id: string) => {
-    const next = new Set(selected)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setSelected(next)
-  }
-
   const filtered = leads.filter((l) => {
     const q = searchQuery.toLowerCase()
     return (
@@ -76,7 +61,7 @@ export function LeadsTable({
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
+      <div className="flex items-center px-4 py-3 border-b border-[var(--color-border)]">
         <input
           type="text"
           placeholder="Search leads..."
@@ -90,34 +75,14 @@ export function LeadsTable({
             'focus:border-[var(--color-accent)]',
           )}
         />
-        <button
-          type="button"
-          className={cn(
-            'flex items-center gap-1.5 h-[36px] px-3 rounded-lg text-[13px]',
-            'border border-[var(--color-border)] text-[var(--color-text-secondary)]',
-            'transition-colors hover:bg-[var(--color-surface-hover)]',
-          )}
-        >
-          <Upload size={13} />
-          Export
-        </button>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px]">
           <thead>
             <tr className="border-b border-[var(--color-border)]">
-              <th className="w-10 pl-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={selected.size === leads.length && leads.length > 0}
-                  onChange={toggleAll}
-                  className="w-4 h-4 rounded accent-[var(--color-accent)]"
-                  aria-label="Select all leads"
-                />
-              </th>
               {[
-                { label: 'Contact / Company', cls: 'text-left' },
+                { label: 'Contact / Company', cls: 'text-left pl-4' },
                 { label: 'Stage', cls: 'text-left w-[140px]' },
                 { label: 'Priority', cls: 'text-left w-[100px]' },
                 { label: 'Assigned To', cls: 'text-left w-[140px]' },
@@ -148,21 +113,12 @@ export function LeadsTable({
                   key={lead.id}
                   className={cn(
                     'group transition-colors hover:bg-[var(--color-surface-hover)] cursor-pointer',
-                    i < filtered.length - 1 && 'border-b border-[var(--color-border)]',
+                    i < filtered.length - 1 &&
+                      'border-b border-[var(--color-border)]',
                   )}
                   onClick={() => onLeadClick(lead)}
                 >
-                  <td className="pl-4 py-3.5 w-10" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(lead.id)}
-                      onChange={() => toggleOne(lead.id)}
-                      className="w-4 h-4 rounded accent-[var(--color-accent)]"
-                      aria-label={`Select ${lead.contact_name}`}
-                    />
-                  </td>
-
-                  <td className="py-3.5 pr-4">
+                  <td className="py-3.5 pl-4 pr-4">
                     <p className="text-[14px] font-semibold text-[var(--color-text-heading)]">
                       {lead.contact_name}
                     </p>

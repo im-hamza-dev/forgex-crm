@@ -7,19 +7,31 @@ import { z } from 'zod'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button, Select } from '@/components/ui'
+import { createClient } from '@/lib/supabase/client'
+import { canAssignLead } from '@/lib/leads-permissions'
+import { useAuth } from '@/hooks/useAuth'
+import type { LeadPriority } from '@/types/leads'
 
 const schema = z.object({
-  contact_name:     z.string().min(1, 'Contact name is required'),
-  company:          z.string().optional(),
-  email:            z.string().email('Invalid email').or(z.literal('')).optional(),
-  phone:            z.string().optional(),
-  linkedin_url:     z.string().optional(),
-  source:           z.string(),
+  contact_name: z.string().min(1, 'Contact name is required'),
+  company: z.string().optional(),
+  email: z.string().email('Invalid email').or(z.literal('')).optional(),
+  phone: z.string().optional(),
+  linkedin_url: z.string().optional(),
+  source: z.enum([
+    'website_form',
+    'referral',
+    'cold_outreach',
+    'social',
+    'other',
+  ]),
   service_interest: z.string().optional(),
-  budget_range:     z.string().optional(),
-  stage:            z.string(),
-  assigned_to:      z.string().optional(),
-  next_follow_up:   z.string().optional(),
+  budget_range: z.string().optional(),
+  stage: z.string(),
+  lead_score: z.string().optional(),
+  tags: z.string().optional(),
+  assigned_to: z.string().optional(),
+  next_follow_up: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -28,12 +40,18 @@ interface NewLeadModalProps {
   open: boolean
   onClose: () => void
   defaultStage?: string
-  onSubmit?: (values: FormValues & { priority: Priority }) => void
+  onSubmit?: (
+    values: Omit<FormValues, 'tags' | 'lead_score'> & {
+      priority: LeadPriority
+      tags: string[]
+      lead_score: number | null
+    },
+  ) => void
+  loading?: boolean
+  canAssign?: boolean
 }
 
-type Priority = 'hot' | 'warm' | 'cold'
-
-const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
+const PRIORITY_OPTIONS: { value: LeadPriority; label: string }[] = [
   { value: 'hot', label: 'Hot' },
   { value: 'warm', label: 'Warm' },
   { value: 'cold', label: 'Cold' },
@@ -86,14 +104,21 @@ export function NewLeadModal({
   onClose,
   defaultStage = 'new_lead',
   onSubmit,
+  loading = false,
+  canAssign: canAssignProp,
 }: NewLeadModalProps) {
-  const [priority, setPriority] = useState<Priority>('warm')
+  const { profile } = useAuth()
+  const showAssign = canAssignProp ?? canAssignLead(profile)
+  const [priority, setPriority] = useState<LeadPriority>('warm')
+  const [teamOptions, setTeamOptions] = useState<
+    { value: string; label: string }[]
+  >([{ value: '', label: 'Unassigned' }])
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -102,8 +127,28 @@ export function NewLeadModal({
       service_interest: '',
       budget_range: '',
       assigned_to: '',
+      tags: '',
+      lead_score: '',
     },
   })
+
+  useEffect(() => {
+    if (!open || !showAssign) return
+    const supabase = createClient()
+    void supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('is_active', true)
+      .then(({ data }) => {
+        setTeamOptions([
+          { value: '', label: 'Unassigned' },
+          ...(data ?? []).map((p) => ({
+            value: p.id,
+            label: p.full_name ?? p.id,
+          })),
+        ])
+      })
+  }, [open, showAssign])
 
   useEffect(() => {
     if (open) {
@@ -119,6 +164,8 @@ export function NewLeadModal({
         budget_range: '',
         assigned_to: '',
         next_follow_up: '',
+        tags: '',
+        lead_score: '',
       })
       setPriority('warm')
     }
@@ -131,8 +178,18 @@ export function NewLeadModal({
   }
 
   const onFormSubmit = (values: FormValues) => {
-    onSubmit?.({ ...values, priority })
-    handleClose()
+    const scoreRaw = values.lead_score?.trim()
+    const lead_score =
+      scoreRaw && !Number.isNaN(Number(scoreRaw))
+        ? Math.min(10, Math.max(1, Number(scoreRaw)))
+        : null
+    const tags = (values.tags ?? '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    const { tags: _tags, lead_score: _score, ...rest } = values
+
+    onSubmit?.({ ...rest, priority, tags, lead_score })
   }
 
   if (!open) return null
@@ -173,7 +230,10 @@ export function NewLeadModal({
         <form
           id="new-lead-form"
           onSubmit={handleSubmit(onFormSubmit)}
-          className="flex-1 overflow-y-auto px-6 py-5"
+          className={cn(
+            'flex-1 overflow-y-auto px-6 py-5',
+            loading && 'opacity-60 pointer-events-none',
+          )}
         >
           <div className="flex flex-col gap-4">
             <div>
@@ -229,7 +289,10 @@ export function NewLeadModal({
                 <Select
                   options={[
                     { value: 'saas_mvp', label: 'SaaS MVP' },
-                    { value: 'workflow_automation', label: 'Workflow Automation' },
+                    {
+                      value: 'workflow_automation',
+                      label: 'Workflow Automation',
+                    },
                     { value: 'custom_crm', label: 'Custom CRM' },
                     { value: 'ai_agents', label: 'AI Agents' },
                     { value: 'tech_retainer', label: 'Tech Retainer' },
@@ -244,15 +307,8 @@ export function NewLeadModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <FieldLabel>Budget Range</FieldLabel>
-                <Select
-                  options={[
-                    { value: 'under_5k', label: 'Under $5k' },
-                    { value: '5k_10k', label: '$5k–$10k' },
-                    { value: '10k_20k', label: '$10k–$20k' },
-                    { value: '20k_50k', label: '$20k–$50k' },
-                    { value: '50k_plus', label: '$50k+' },
-                  ]}
-                  placeholder="Select..."
+                <ModalInput
+                  placeholder="$5k–$10k"
                   {...register('budget_range')}
                 />
               </div>
@@ -283,7 +339,8 @@ export function NewLeadModal({
                     onClick={() => setPriority(opt.value)}
                     className={cn(
                       'flex-1 h-[40px] text-[13px] font-medium transition-colors',
-                      i < PRIORITY_OPTIONS.length - 1 && 'border-r border-[var(--color-border)]',
+                      i < PRIORITY_OPTIONS.length - 1 &&
+                        'border-r border-[var(--color-border)]',
                       priority === opt.value
                         ? 'bg-[var(--color-accent)] text-white'
                         : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)]',
@@ -297,18 +354,31 @@ export function NewLeadModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <FieldLabel>Assigned To</FieldLabel>
-                <Select
-                  options={[
-                    { value: '', label: 'Unassigned' },
-                    { value: 'user-hi', label: 'Hamza Iqbal' },
-                    { value: 'user-sa', label: 'Sara Ahmed' },
-                    { value: 'user-zm', label: 'Zain Malik' },
-                  ]}
-                  {...register('assigned_to')}
+                <FieldLabel>Lead Score (1–10)</FieldLabel>
+                <ModalInput
+                  type="number"
+                  min={1}
+                  max={10}
+                  {...register('lead_score')}
                 />
               </div>
               <div>
+                <FieldLabel>Tags</FieldLabel>
+                <ModalInput
+                  placeholder="healthcare, b2b"
+                  {...register('tags')}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {showAssign && (
+                <div>
+                  <FieldLabel>Assigned To</FieldLabel>
+                  <Select options={teamOptions} {...register('assigned_to')} />
+                </div>
+              )}
+              <div className={showAssign ? undefined : 'col-span-2'}>
                 <FieldLabel>Next Follow-Up</FieldLabel>
                 <ModalInput type="date" {...register('next_follow_up')} />
               </div>
@@ -325,7 +395,7 @@ export function NewLeadModal({
             size="md"
             type="submit"
             form="new-lead-form"
-            loading={isSubmitting}
+            loading={loading}
           >
             Create Lead
           </Button>

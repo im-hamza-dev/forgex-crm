@@ -1,26 +1,65 @@
-export type Priority = 'hot' | 'warm' | 'cold'
-export type LeadStatus = 'active' | 'won' | 'lost' | 'archived'
+import type { Database } from './database.types'
 
-export interface Lead {
+export type Lead = Database['public']['Tables']['leads']['Row'] & {
+  assigned_profile?: { full_name: string | null; avatar_url: string | null } | null
+  created_profile?: { full_name: string | null; avatar_url: string | null } | null
+  /** Denormalized for table/card helpers */
+  assignee_name?: string | null
+  assignee_avatar?: string | null
+}
+
+export type LeadInsert = Database['public']['Tables']['leads']['Insert']
+export type LeadUpdate = Database['public']['Tables']['leads']['Update']
+
+export type LeadNote = Database['public']['Tables']['lead_notes']['Row'] & {
+  author?: { full_name: string | null; avatar_url: string | null } | null
+}
+
+export type LeadAttachment =
+  Database['public']['Tables']['lead_attachments']['Row'] & {
+    uploader?: { full_name: string | null; avatar_url: string | null } | null
+  }
+
+export type LeadActivityAction =
+  | 'lead_created'
+  | 'stage_changed'
+  | 'note_added'
+  | 'note_deleted'
+  | 'attachment_added'
+  | 'attachment_deleted'
+  | 'lead_assigned'
+  | 'lead_updated'
+  | 'lead_deleted'
+
+export type LeadActivity = {
   id: string
-  contact_name: string
-  company: string | null
-  email: string | null
-  phone: string | null
-  linkedin_url: string | null
-  source: string
-  service_interest: string | null
-  budget_range: string | null
-  tags: string[]
-  stage: string
-  status: LeadStatus
-  priority: Priority
-  lead_score: number | null
-  assigned_to: string | null
-  assignee_name: string | null
-  assignee_avatar: string | null
-  last_contacted_at: string | null
-  next_follow_up: string | null
+  lead_id: string
+  actor_id: string | null
+  actor_name: string
+  action: LeadActivityAction
+  metadata: Record<string, unknown>
   created_at: string
-  updated_at: string
+}
+
+/** Matches public.lead_stage */
+export type LeadStage = Database['public']['Enums']['lead_stage']
+
+/** Matches public.lead_priority */
+export type LeadPriority = Database['public']['Enums']['lead_priority']
+
+/** Matches public.lead_status (active | won | lost | archived) */
+export type LeadStatus = Database['public']['Enums']['lead_status']
+
+/** Matches public.lead_source */
+export type LeadSource = Database['public']['Enums']['lead_source']
+
+/** Matches public.lead_note_type */
+export type LeadNoteType = Database['public']['Enums']['lead_note_type']
+
+export type LeadFilters = {
+  stage?: string
+  search?: string
+  assigned_to?: string
+  priority?: string
+  status?: string
 }

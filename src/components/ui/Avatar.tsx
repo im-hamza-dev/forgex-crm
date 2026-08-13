@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface AvatarProps {
@@ -24,24 +27,17 @@ function getInitials(name: string | null | undefined): string {
   )
 }
 
-export function Avatar({ src, name, size = 'sm', className }: AvatarProps) {
-  const initials = getInitials(name)
-
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt={name ?? 'Avatar'}
-        className={cn(
-          'rounded-full object-cover flex-shrink-0',
-          sizeClasses[size],
-          className,
-        )}
-      />
-    )
-  }
-
+function InitialsFallback({
+  name,
+  size,
+  className,
+  initials,
+}: {
+  name?: string | null
+  size: keyof typeof sizeClasses
+  className?: string
+  initials: string
+}) {
   return (
     <div
       className={cn(
@@ -54,5 +50,40 @@ export function Avatar({ src, name, size = 'sm', className }: AvatarProps) {
     >
       {initials}
     </div>
+  )
+}
+
+export function Avatar({ src, name, size = 'sm', className }: AvatarProps) {
+  const initials = getInitials(name)
+  const [failed, setFailed] = useState(false)
+  const trimmedSrc = src?.trim() || null
+
+  useEffect(() => {
+    setFailed(false)
+  }, [trimmedSrc])
+
+  if (trimmedSrc && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={trimmedSrc}
+        alt={name ?? 'Avatar'}
+        onError={() => setFailed(true)}
+        className={cn(
+          'rounded-full object-cover flex-shrink-0',
+          sizeClasses[size],
+          className,
+        )}
+      />
+    )
+  }
+
+  return (
+    <InitialsFallback
+      name={name}
+      size={size}
+      className={className}
+      initials={initials}
+    />
   )
 }

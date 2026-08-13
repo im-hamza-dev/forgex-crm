@@ -11,13 +11,13 @@ import { LeadDrawerConversation } from './LeadDrawerConversation'
 import { LeadDrawerAttachments } from './LeadDrawerAttachments'
 
 const PRIORITY_COLORS: Record<string, string> = {
-  hot:  '#8B1A1A',
-  warm: '#8B5E00',
-  cold: '#1A3D6B',
+  hot: 'var(--color-danger)',
+  warm: 'var(--color-warning)',
+  cold: 'var(--color-text-secondary)',
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
-  hot:  'Hot',
+  hot: 'Hot',
   warm: 'Warm',
   cold: 'Cold',
 }
@@ -28,6 +28,8 @@ interface LeadDrawerProps {
   onClose: () => void
   onEdit?: (lead: Lead) => void
   onConvert?: (lead: Lead) => void
+  onDelete?: (lead: Lead) => void
+  isDeleting?: boolean
 }
 
 const DRAWER_TABS = [
@@ -40,15 +42,17 @@ export function LeadDrawer({
   lead,
   open,
   onClose,
-  onEdit,
   onConvert,
+  onDelete,
+  isDeleting = false,
 }: LeadDrawerProps) {
   const [activeTab, setActiveTab] = useState('overview')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (!open || !lead) return null
 
   const stage = getStage(lead.stage)
-  const priorityColor = PRIORITY_COLORS[lead.priority] ?? '#8B5E00'
+  const priorityColor = PRIORITY_COLORS[lead.priority] ?? 'var(--color-warning)'
   const priorityLabel = PRIORITY_LABELS[lead.priority] ?? 'Warm'
 
   return (
@@ -61,7 +65,7 @@ export function LeadDrawer({
       <div
         className={cn(
           'fixed right-0 top-0 bottom-0 z-[100]',
-          'flex flex-col w-[360px]',
+          'flex flex-col w-[520px]',
           'bg-[var(--color-surface)]',
           'border-l border-[var(--color-border)]',
           'shadow-[-8px_0_32px_rgba(26,16,8,0.08)]',
@@ -106,30 +110,34 @@ export function LeadDrawer({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--color-border)] shrink-0">
-          <button
-            type="button"
-            onClick={() => onEdit?.(lead)}
-            className={cn(
-              'h-[34px] px-4 rounded-lg text-[13px] font-medium',
-              'border border-[var(--color-border)] text-[var(--color-text-body)]',
-              'transition-colors hover:bg-[var(--color-surface-hover)]',
+        {onDelete && (
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--color-border)] shrink-0">
+            {onConvert && (
+              <button
+                type="button"
+                onClick={() => onConvert(lead)}
+                className={cn(
+                  'h-[34px] px-4 rounded-lg text-[13px] font-semibold text-white',
+                  'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]',
+                  'transition-colors',
+                )}
+              >
+                Convert to Project
+              </button>
             )}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onConvert?.(lead)}
-            className={cn(
-              'h-[34px] px-4 rounded-lg text-[13px] font-semibold text-white',
-              'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]',
-              'transition-colors',
-            )}
-          >
-            Convert to Project
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className={cn(
+                'h-[34px] px-4 rounded-lg text-[13px] font-medium ml-auto',
+                'text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]',
+                'transition-colors',
+              )}
+            >
+              Delete
+            </button>
+          </div>
+        )}
 
         <div className="shrink-0 px-5">
           <Tabs
@@ -149,6 +157,52 @@ export function LeadDrawer({
           )}
         </div>
       </div>
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setConfirmDelete(false)}
+          />
+          <div
+            className="relative z-10 bg-[var(--color-surface)] rounded-2xl shadow-xl p-6 w-[340px] flex flex-col gap-4"
+          >
+            <h3 className="text-[16px] font-bold text-[var(--color-text-heading)]">
+              Delete lead?
+            </h3>
+            <p className="text-[13px] text-[var(--color-text-secondary)]">
+              This will permanently delete{' '}
+              <span className="font-semibold text-[var(--color-text-heading)]">
+                {lead.company ?? lead.contact_name}
+              </span>{' '}
+              and all notes, attachments and activity. This cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={isDeleting}
+                className="h-[38px] px-4 rounded-lg text-[13px] font-medium border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => {
+                  onDelete?.(lead)
+                }}
+                className="h-[38px] px-4 rounded-lg text-[13px] font-semibold text-white bg-[var(--color-danger)] hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center gap-2"
+              >
+                {isDeleting && (
+                  <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                )}
+                {isDeleting ? 'Deleting...' : 'Delete lead'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -10,19 +10,33 @@ interface LeadCardProps {
   onClick?: () => void
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  hot:  '#8B1A1A',
-  warm: '#8B5E00',
-  cold: '#1A3D6B',
+const PRIORITY_STYLES: Record<
+  string,
+  { bg: string; text: string; label: string }
+> = {
+  hot: {
+    bg: 'var(--color-danger-bg)',
+    text: 'var(--color-danger)',
+    label: 'Hot',
+  },
+  warm: {
+    bg: 'var(--color-warning-bg)',
+    text: 'var(--color-warning)',
+    label: 'Warm',
+  },
+  cold: {
+    bg: 'var(--color-accent-subtle)',
+    text: 'var(--color-text-secondary)',
+    label: 'Cold',
+  },
 }
 
-const SERVICE_LABELS: Record<string, string> = {
-  saas_mvp:             'SaaS MVP',
-  workflow_automation:  'Workflow Automation',
-  custom_crm:           'Custom CRM',
-  ai_agents:            'AI Agents',
-  tech_retainer:        'Tech Retainer',
-  other:                'Other',
+const SOURCE_LABELS: Record<string, string> = {
+  website_form: 'Website',
+  referral: 'Referral',
+  cold_outreach: 'Cold outreach',
+  social: 'Social',
+  other: 'Other',
 }
 
 function isOverdue(dateStr: string | null): boolean {
@@ -39,13 +53,12 @@ function isOverdue(dateStr: string | null): boolean {
 
 export function LeadCard({ lead, onClick }: LeadCardProps) {
   const stage = getStage(lead.stage)
-  const priorityColor = PRIORITY_COLORS[lead.priority] ?? '#8B5E00'
+  const priority = PRIORITY_STYLES[lead.priority] ?? PRIORITY_STYLES.warm!
   const overdue = isOverdue(lead.next_follow_up)
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return null
-    return dateStr.split('T')[0] ?? dateStr
-  }
+  const assigneeName =
+    lead.assignee_name ?? lead.assigned_profile?.full_name ?? null
+  const assigneeAvatar =
+    lead.assignee_avatar ?? lead.assigned_profile?.avatar_url ?? null
 
   return (
     <div
@@ -65,46 +78,39 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         'focus-visible:outline-none focus-visible:ring-2',
         'focus-visible:ring-[var(--color-accent)]',
       )}
-      style={{
-        borderLeft: `3px solid ${stage.color}`,
-      }}
+      style={{ borderLeft: `3px solid ${stage.color}` }}
     >
       <div className="flex items-start justify-between gap-2 mb-1">
         <span className="text-[14px] font-semibold leading-snug text-[var(--color-text-heading)]">
-          {lead.company ?? lead.contact_name}
+          {lead.contact_name}
         </span>
         <span
-          className="w-2 h-2 rounded-full shrink-0 mt-1"
-          style={{ background: priorityColor }}
-          aria-label={`${lead.priority} priority`}
-        />
+          className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+          style={{ background: priority.bg, color: priority.text }}
+        >
+          {priority.label}
+        </span>
       </div>
 
-      <p className="text-[13px] mb-2.5 text-[var(--color-text-secondary)]">
-        {lead.contact_name}
+      <p className="text-[13px] mb-2 text-[var(--color-text-muted)]">
+        {lead.company ?? '—'}
       </p>
 
-      <div className="flex items-center justify-between gap-2 mb-3">
-        {lead.service_interest && (
-          <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium truncate max-w-[120px] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
-            {SERVICE_LABELS[lead.service_interest] ?? lead.service_interest}
-          </span>
-        )}
-        {lead.budget_range && (
-          <span className="text-[12px] shrink-0 text-[var(--color-text-muted)]">
-            {lead.budget_range}
+      <div className="flex items-center flex-wrap gap-1.5 mb-3">
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]">
+          {SOURCE_LABELS[lead.source] ?? lead.source}
+        </span>
+        {lead.lead_score != null && (
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Score: {lead.lead_score}/10
           </span>
         )}
       </div>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          {lead.assignee_name ? (
-            <Avatar
-              name={lead.assignee_name}
-              src={lead.assignee_avatar}
-              size="xs"
-            />
+          {assigneeName ? (
+            <Avatar name={assigneeName} src={assigneeAvatar} size="xs" />
           ) : (
             <div
               className="w-6 h-6 rounded-full border border-dashed border-[var(--color-border-strong)]"
@@ -122,7 +128,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
                 : 'text-[var(--color-text-muted)]',
             )}
           >
-            {formatDate(lead.next_follow_up)}
+            {lead.next_follow_up.split('T')[0]}
           </span>
         )}
       </div>

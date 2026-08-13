@@ -27,7 +27,7 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const router = useRouter()
   const { profile, isLoading, signOut } = useAuth()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const [cmdOpen, setCmdOpen] = useState(false)
 
   useEffect(() => {

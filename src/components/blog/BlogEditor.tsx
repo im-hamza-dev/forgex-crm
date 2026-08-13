@@ -24,7 +24,7 @@ interface BlogEditorProps {
 
 export function BlogEditor({ post }: BlogEditorProps) {
   const router = useRouter()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const [title, setTitle] = useState(post?.title ?? '')
   const [body, setBody] = useState(post?.body ?? '')
   const [status, setStatus] = useState<BlogPostStatus>(post?.status ?? 'draft')
