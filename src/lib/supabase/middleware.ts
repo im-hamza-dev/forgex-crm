@@ -5,6 +5,9 @@ import { ENV } from '@/constants/env'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
+  const originalCookies = new Map(
+    request.cookies.getAll().map((cookie) => [cookie.name, cookie.value]),
+  )
 
   const supabase = createServerClient<Database>(
     ENV.SUPABASE_URL,
@@ -18,6 +21,12 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           )
+
+          const changed = cookiesToSet.some(
+            ({ name, value }) => originalCookies.get(name) !== value,
+          )
+          if (!changed) return
+
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, {

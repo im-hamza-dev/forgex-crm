@@ -1,30 +1,43 @@
-export type BlogPostStatus =
-  | 'draft'
-  | 'in_review'
-  | 'scheduled'
-  | 'published'
-  | 'archived'
+import type { Database, Json } from './database.types'
 
-export interface BlogPost {
-  id: string
-  title: string
-  slug: string
-  excerpt: string | null
-  body: string | null
-  cover_image_url: string | null
-  author_id: string
-  author_name: string
-  author_avatar: string | null
-  category: string | null
-  tags: string[]
-  status: BlogPostStatus
-  publish_date: string | null
-  published_at: string | null
-  seo_title: string | null
-  seo_description: string | null
-  reading_time_minutes: number | null
-  is_featured: boolean
-  allow_comments: boolean
-  created_at: string
-  updated_at: string
+export type BlogPostStatus = Database['public']['Enums']['blog_post_status']
+export type BlogCommentStatus =
+  Database['public']['Enums']['blog_comment_status']
+
+export type BlogPost = Database['public']['Tables']['blog_posts']['Row'] & {
+  author?: {
+    full_name: string | null
+    avatar_url: string | null
+  } | null
+  category?: {
+    id: string
+    name: string
+    slug: string
+  } | null
+  /** Flattened helpers for UI that still expects these */
+  author_name?: string
+  author_avatar?: string | null
 }
+
+export type BlogPostInsert = Database['public']['Tables']['blog_posts']['Insert']
+export type BlogPostUpdate = Database['public']['Tables']['blog_posts']['Update']
+
+export type BlogCategory =
+  Database['public']['Tables']['blog_categories']['Row']
+
+export type BlogComment =
+  Database['public']['Tables']['blog_comments']['Row'] & {
+    author?: {
+      full_name: string | null
+      avatar_url: string | null
+    } | null
+  }
+
+export type BlogFilters = {
+  search?: string
+  status?: BlogPostStatus | 'all' | string
+  category_id?: string
+  author_id?: string
+}
+
+export type BlogBody = Json | Record<string, unknown> | null

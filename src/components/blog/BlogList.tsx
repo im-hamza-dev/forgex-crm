@@ -1,30 +1,33 @@
 'use client'
 
-import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BlogPostRow } from './BlogPostRow'
 import { BLOG_FILTER_TABS, type BlogStatusFilter } from '@/constants/blog-config'
+import type { AuthProfile } from '@/stores/auth-store'
 import type { BlogPost } from '@/types/blog'
 
 interface BlogListProps {
   posts: BlogPost[]
   onPostClick: (post: BlogPost) => void
+  profile?: AuthProfile | null
+  search: string
+  onSearchChange: (v: string) => void
+  statusFilter: BlogStatusFilter
+  onStatusFilterChange: (v: BlogStatusFilter) => void
+  isLoading?: boolean
 }
 
-export function BlogList({ posts, onPostClick }: BlogListProps) {
-  const [filter, setFilter] = useState<BlogStatusFilter>('all')
-  const [search, setSearch] = useState('')
-
-  const filtered = posts.filter((p) => {
-    const matchesStatus = filter === 'all' || p.status === filter
-    const matchesSearch =
-      !search ||
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      (p.excerpt ?? '').toLowerCase().includes(search.toLowerCase())
-    return matchesStatus && matchesSearch
-  })
-
+export function BlogList({
+  posts,
+  onPostClick,
+  profile = null,
+  search,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  isLoading,
+}: BlogListProps) {
   return (
     <div>
       <div
@@ -41,7 +44,7 @@ export function BlogList({ posts, onPostClick }: BlogListProps) {
             type="text"
             placeholder="Search posts..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             className={cn(
               'h-[34px] pl-8 pr-3 w-[220px] rounded-lg text-[13px]',
               'border outline-none transition-colors',
@@ -55,17 +58,17 @@ export function BlogList({ posts, onPostClick }: BlogListProps) {
           />
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {BLOG_FILTER_TABS.map((tab) => (
             <button
               type="button"
               key={tab.value}
-              onClick={() => setFilter(tab.value)}
+              onClick={() => onStatusFilterChange(tab.value)}
               className={cn(
                 'h-[32px] px-3.5 rounded-full text-[13px] font-medium transition-colors',
               )}
               style={
-                filter === tab.value
+                statusFilter === tab.value
                   ? { background: 'var(--color-action)', color: '#ffffff' }
                   : {
                       color: 'var(--color-text-secondary)',
@@ -80,10 +83,19 @@ export function BlogList({ posts, onPostClick }: BlogListProps) {
       </div>
 
       <div
-        className="rounded-xl border bg-[var(--color-surface)] overflow-hidden"
+        className="rounded-xl border bg-[var(--color-surface)]"
         style={{ borderColor: 'var(--color-border)' }}
       >
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="p-5 space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-[72px] rounded-lg animate-pulse bg-[var(--color-surface-hover)]"
+              />
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
           <div className="py-16 text-center">
             <p
               className="text-[15px] font-semibold mb-1"
@@ -96,12 +108,14 @@ export function BlogList({ posts, onPostClick }: BlogListProps) {
             </p>
           </div>
         ) : (
-          filtered.map((post, i) => (
+          posts.map((post, i) => (
             <BlogPostRow
               key={post.id}
               post={post}
+              profile={profile}
               onClick={() => onPostClick(post)}
-              isLast={i === filtered.length - 1}
+              isFirst={i === 0}
+              isLast={i === posts.length - 1}
             />
           ))
         )}

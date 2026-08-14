@@ -1,5 +1,7 @@
+'use client'
+
 import { BlogEditor } from '@/components/blog'
 
 export default function NewBlogPostPage() {
-  return <BlogEditor post={null} />
+  return <BlogEditor post={null} isNew />
 }

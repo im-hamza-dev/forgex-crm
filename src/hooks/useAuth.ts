@@ -1,9 +1,65 @@
 'use client'
 
 import { useCallback, useEffect } from 'react'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { ROUTES } from '@/constants/routes'
+
+let authListenerStarted = false
+
+async function loadProfile(userId: string) {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle()
+  useAuthStore.getState().setProfile(data)
+}
+
+function startAuthListener() {
+  if (authListenerStarted) return
+  authListenerStarted = true
+
+  const supabase = createClient()
+
+  void supabase.auth.getSession().then(({ data: { session } }) => {
+    const currentUser = session?.user ?? null
+    useAuthStore.getState().setUser(currentUser)
+    if (currentUser) {
+      void loadProfile(currentUser.id).finally(() => {
+        useAuthStore.getState().setLoading(false)
+      })
+    } else {
+      useAuthStore.getState().setLoading(false)
+    }
+  })
+
+  supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+    if (event === 'SIGNED_OUT') {
+      useAuthStore.getState().reset()
+      return
+    }
+
+    if (event === 'TOKEN_REFRESHED') {
+      useAuthStore.getState().setUser(session?.user ?? null)
+      return
+    }
+
+    const nextUser = session?.user ?? null
+    useAuthStore.getState().setUser(nextUser)
+
+    if (nextUser) {
+      void loadProfile(nextUser.id).finally(() => {
+        useAuthStore.getState().setLoading(false)
+      })
+    } else {
+      useAuthStore.getState().setProfile(null)
+      useAuthStore.getState().setLoading(false)
+    }
+  })
+}
 
 export function useAuth() {
   const user = useAuthStore((s) => s.user)
@@ -11,59 +67,7 @@ export function useAuth() {
   const isLoading = useAuthStore((s) => s.isLoading)
 
   useEffect(() => {
-    const supabase = createClient()
-
-    const loadProfile = async (userId: string) => {
-      console.log('[useAuth] loadProfile called with userId:', userId)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-      console.log('[useAuth] loadProfile result:', { data, error })
-      useAuthStore.getState().setProfile(data)
-    }
-
-    const init = async () => {
-      console.log('[useAuth] init started')
-      const { data: { session }, error } = await supabase.auth.getSession()
-      console.log('[useAuth] getSession result:', { session, error })
-      const currentUser = session?.user ?? null
-      useAuthStore.getState().setUser(currentUser)
-      if (currentUser) {
-        await loadProfile(currentUser.id)
-      } else {
-        console.log('[useAuth] no user in session')
-      }
-      useAuthStore.getState().setLoading(false)
-      console.log('[useAuth] init complete')
-    }
-
-    void init()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[useAuth] onAuthStateChange event:', event, 'session:', session?.user?.id)
-
-        if (event === 'SIGNED_OUT') {
-          useAuthStore.getState().reset()
-          return
-        }
-
-        const nextUser = session?.user ?? null
-        useAuthStore.getState().setUser(nextUser)
-
-        if (nextUser) {
-          await loadProfile(nextUser.id)
-        } else {
-          useAuthStore.getState().setProfile(null)
-        }
-
-        useAuthStore.getState().setLoading(false)
-      }
-    )
-
-    return () => subscription.unsubscribe()
+    startAuthListener()
   }, [])
 
   const signOut = useCallback(async () => {

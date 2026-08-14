@@ -1,24 +1,36 @@
 'use client'
 
 import { useState, type InputHTMLAttributes, type ReactNode } from 'react'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronUp, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BLOG_CATEGORIES } from '@/constants/blog-config'
+import { useAuth } from '@/hooks/useAuth'
+import {
+  useBlogCategories,
+  useCreateBlogCategory,
+} from '@/hooks/useBlog'
+import { canFeaturePost, canManageCategories } from '@/lib/blog-permissions'
+import { toast } from '@/components/ui'
 
 interface BlogSeoPanelProps {
   title: string
   seoTitle: string
   seoDescription: string
-  category: string
+  categoryId: string
+  tags: string[]
+  tagsInput: string
   allowComments: boolean
   ogImageIsCover: boolean
+  isFeatured: boolean
   authorName: string
   readingTime: number | null
   onSeoTitleChange: (v: string) => void
   onSeoDescChange: (v: string) => void
   onCategoryChange: (v: string) => void
+  onTagsInputChange: (v: string) => void
+  onTagsChange: (tags: string[]) => void
   onAllowCommentsChange: (v: boolean) => void
   onOgImageIsCoverChange: (v: boolean) => void
+  onIsFeaturedChange: (v: boolean) => void
 }
 
 function AccordionSection({
@@ -123,20 +135,53 @@ export function BlogSeoPanel({
   title,
   seoTitle,
   seoDescription,
-  category,
+  categoryId,
+  tags,
+  tagsInput,
   allowComments,
   ogImageIsCover,
+  isFeatured,
   authorName,
   readingTime,
   onSeoTitleChange,
   onSeoDescChange,
   onCategoryChange,
+  onTagsInputChange,
+  onTagsChange,
   onAllowCommentsChange,
   onOgImageIsCoverChange,
+  onIsFeaturedChange,
 }: BlogSeoPanelProps) {
+  const { profile } = useAuth()
+  const { data: categories = [] } = useBlogCategories()
+  const createCategory = useCreateBlogCategory()
+  const [newCategory, setNewCategory] = useState('')
+
   const displayTitle = seoTitle || title || 'Post title'
   const displayDesc = seoDescription || 'Meta description...'
   const slug = slugify(seoTitle || title)
+  const canFeature = canFeaturePost(profile)
+  const canCreateCat = canManageCategories(profile)
+
+  const commitTags = (raw: string) => {
+    const next = raw
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    onTagsChange(next)
+  }
+
+  const handleCreateCategory = async () => {
+    if (!newCategory.trim()) return
+    try {
+      const cat = await createCategory.mutateAsync({ name: newCategory.trim() })
+      onCategoryChange(cat.id)
+      setNewCategory('')
+      toast.success('Category created')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create')
+    }
+  }
 
   return (
     <div
@@ -208,12 +253,12 @@ export function BlogSeoPanel({
         </div>
       </AccordionSection>
 
-      <AccordionSection title="Publishing" defaultOpen={!!category}>
+      <AccordionSection title="Publishing" defaultOpen>
         <div className="mb-3">
           <PanelLabel>Category</PanelLabel>
           <div className="relative">
             <select
-              value={category}
+              value={categoryId}
               onChange={(e) => onCategoryChange(e.target.value)}
               className={cn(
                 'w-full h-[36px] pl-3 pr-8 rounded-lg text-[13px] appearance-none',
@@ -226,9 +271,9 @@ export function BlogSeoPanel({
               }}
             >
               <option value="">Select category</option>
-              {BLOG_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -238,6 +283,62 @@ export function BlogSeoPanel({
               style={{ color: 'var(--color-text-muted)' }}
             />
           </div>
+          {canCreateCat && (
+            <div className="flex gap-1.5 mt-2">
+              <PanelInput
+                value={newCategory}
+                onChange={setNewCategory}
+                placeholder="New category..."
+              />
+              <button
+                type="button"
+                onClick={() => void handleCreateCategory()}
+                disabled={createCategory.isPending}
+                className="h-[36px] px-3 rounded-lg text-[12px] font-medium shrink-0 border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)]"
+              >
+                Add
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mb-3">
+          <PanelLabel>Tags</PanelLabel>
+          <PanelInput
+            value={tagsInput}
+            onChange={(v) => {
+              onTagsInputChange(v)
+              commitTags(v)
+            }}
+            placeholder="ai, saas, crm"
+          />
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+                  style={{
+                    background: 'var(--color-accent-subtle)',
+                    color: 'var(--color-accent)',
+                  }}
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = tags.filter((t) => t !== tag)
+                      onTagsChange(next)
+                      onTagsInputChange(next.join(', '))
+                    }}
+                    aria-label={`Remove ${tag}`}
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <label className="flex items-center justify-between mb-2 cursor-pointer">
@@ -255,7 +356,7 @@ export function BlogSeoPanel({
           />
         </label>
 
-        <label className="flex items-center justify-between cursor-pointer">
+        <label className="flex items-center justify-between mb-2 cursor-pointer">
           <span
             className="text-[12px] font-medium uppercase tracking-[0.05em]"
             style={{ color: 'var(--color-text-muted)' }}
@@ -269,6 +370,23 @@ export function BlogSeoPanel({
             className="w-4 h-4 accent-[var(--color-accent)]"
           />
         </label>
+
+        {canFeature && (
+          <label className="flex items-center justify-between cursor-pointer">
+            <span
+              className="text-[12px] font-medium uppercase tracking-[0.05em]"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              Featured
+            </span>
+            <input
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => onIsFeaturedChange(e.target.checked)}
+              className="w-4 h-4 accent-[var(--color-accent)]"
+            />
+          </label>
+        )}
       </AccordionSection>
 
       <AccordionSection title="Author" defaultOpen={false}>

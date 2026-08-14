@@ -99,6 +99,7 @@ export function Sidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={false}
                     title={collapsed ? item.label : undefined}
                     className={cn(
                       'group relative flex items-center gap-2.5 rounded-lg',

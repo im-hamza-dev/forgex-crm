@@ -39,8 +39,16 @@ export const queryKeys = {
   task: (id: string) => ['tasks', 'detail', id] as const,
 
   // Blog
+  blog: {
+    all: ['blog'] as const,
+    list: (filters: Record<string, unknown> = {}) =>
+      ['blog', 'list', filters] as const,
+    detail: (id: string) => ['blog', 'detail', id] as const,
+    comments: (id: string) => ['blog', id, 'comments'] as const,
+    categories: ['blog', 'categories'] as const,
+  },
   blogPosts: ['blog'] as const,
-  blogPost: (id: string) => ['blog', id] as const,
+  blogPost: (id: string) => ['blog', 'detail', id] as const,
 
   // Notifications
   notifications: ['notifications'] as const,
