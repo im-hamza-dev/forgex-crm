@@ -123,3 +123,25 @@ create policy "admin_manage_docs"
       and p.role = 'admin'
     )
   );
+
+
+
+  -- Add missing columns to content_calendar
+ALTER TABLE content_calendar
+ADD COLUMN IF NOT EXISTS entry_type text NOT NULL DEFAULT 'content',
+ADD COLUMN IF NOT EXISTS scheduled_time time,
+ADD COLUMN IF NOT EXISTS is_all_day boolean NOT NULL DEFAULT true,
+ADD COLUMN IF NOT EXISTS color text,
+ADD COLUMN IF NOT EXISTS description text,
+ADD COLUMN IF NOT EXISTS source_type text,
+ADD COLUMN IF NOT EXISTS source_id uuid;
+
+-- Add check constraint for entry_type values
+ALTER TABLE content_calendar
+ADD CONSTRAINT entry_type_check
+CHECK (entry_type IN ('content','meeting','deadline','followup','task','other'));
+
+-- Add source_type check
+ALTER TABLE content_calendar
+ADD CONSTRAINT source_type_check
+CHECK (source_type IN ('lead','project','milestone','task','blog') OR source_type IS NULL);

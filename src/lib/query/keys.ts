@@ -58,7 +58,11 @@ export const queryKeys = {
   team: ['team'] as const,
 
   // Content calendar
-  calendar: ['calendar'] as const,
+  calendar: {
+    all: ['calendar'] as const,
+    entries: (year: number, month: number) =>
+      ['calendar', 'entries', year, month] as const,
+  },
 
   // Docs
   docs: ['docs'] as const,

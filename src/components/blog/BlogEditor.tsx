@@ -19,6 +19,7 @@ import {
   canModerateComments,
   canDeletePost,
   canEditPost,
+  canFeaturePost,
 } from '@/lib/blog-permissions'
 import { ROUTES } from '@/constants/routes'
 import { BlogEditorHeader } from './BlogEditorHeader'
@@ -91,6 +92,11 @@ export function BlogEditor({
   const [status, setStatus] = useState<BlogPostStatus>(
     resolvedPost?.status ?? 'draft',
   )
+  const [publishDate, setPublishDate] = useState<string>(
+    resolvedPost?.publish_date
+      ? (resolvedPost.publish_date.split('T')[0] ?? '')
+      : '',
+  )
   const [seoTitle, setSeoTitle] = useState(resolvedPost?.seo_title ?? '')
   const [seoDesc, setSeoDesc] = useState(resolvedPost?.seo_description ?? '')
   const [categoryId, setCategoryId] = useState(resolvedPost?.category_id ?? '')
@@ -117,6 +123,8 @@ export function BlogEditor({
   const dirtyRef = useRef(false)
   const ignoreDirtyRef = useRef(true)
   const [hydrated, setHydrated] = useState(() => !postIdProp || Boolean(post))
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [pendingScheduleDate, setPendingScheduleDate] = useState('')
 
   const createPost = useCreateBlogPost()
   const updatePost = useUpdateBlogPost()
@@ -151,6 +159,7 @@ export function BlogEditor({
     allowComments,
     isFeatured,
     coverUrl,
+    publishDate,
   ])
 
   useEffect(() => {
@@ -160,6 +169,11 @@ export function BlogEditor({
       setTitle(resolvedPost.title ?? '')
       setBody(bodyToEditorContent(resolvedPost.body ?? null))
       setStatus(resolvedPost.status ?? 'draft')
+      setPublishDate(
+        resolvedPost.publish_date
+          ? (resolvedPost.publish_date.split('T')[0] ?? '')
+          : '',
+      )
       setSeoTitle(resolvedPost.seo_title ?? '')
       setSeoDesc(resolvedPost.seo_description ?? '')
       setCategoryId(resolvedPost.category_id ?? '')
@@ -193,6 +207,8 @@ export function BlogEditor({
         og_image_url: ogIsCover ? coverUrl : null,
         is_featured: isFeatured,
         allow_comments: allowComments,
+        publish_date:
+          nextStatus === 'scheduled' && publishDate ? publishDate : null,
       }
     },
     [
@@ -207,6 +223,7 @@ export function BlogEditor({
       ogIsCover,
       isFeatured,
       allowComments,
+      publishDate,
     ],
   )
 
@@ -235,6 +252,89 @@ export function BlogEditor({
     },
     [buildPayload, postId, updatePost, createPost, isNew, router],
   )
+
+  useEffect(() => {
+    if (resolvedPost?.publish_date) {
+      setPublishDate(resolvedPost.publish_date.split('T')[0] ?? '')
+    }
+  }, [resolvedPost?.publish_date])
+
+  const handleStatusChange = async (newStatus: BlogPostStatus) => {
+    if (newStatus === 'scheduled') {
+      setPendingScheduleDate(publishDate)
+      setShowScheduleModal(true)
+      return
+    }
+    setStatus(newStatus)
+    if (!postId) return
+    try {
+      await updatePost.mutateAsync({
+        id: postId,
+        data: {
+          status: newStatus,
+          publish_date: null,
+        },
+      })
+      setPublishDate('')
+      setLastSavedAt(new Date())
+      toast.success(`Status changed to ${newStatus}`)
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to update status',
+      )
+      setStatus(resolvedPost?.status ?? 'draft')
+    }
+  }
+
+  const confirmSchedule = async () => {
+    if (!pendingScheduleDate) {
+      toast.error('Please select a publish date')
+      return
+    }
+    if (!postId) {
+      toast.error('Please save the post first before scheduling')
+      return
+    }
+    try {
+      setStatus('scheduled')
+      setPublishDate(pendingScheduleDate)
+      await updatePost.mutateAsync({
+        id: postId,
+        data: {
+          status: 'scheduled',
+          publish_date: pendingScheduleDate,
+        },
+      })
+      setLastSavedAt(new Date())
+      setShowScheduleModal(false)
+      setPendingScheduleDate('')
+      toast.success(
+        `Post scheduled for ${new Date(pendingScheduleDate).toLocaleDateString(
+          'en-US',
+          { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+        )}`,
+      )
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to schedule post',
+      )
+      setStatus(resolvedPost?.status ?? 'draft')
+    }
+  }
+
+  const handlePublishDateChange = async (date: string) => {
+    setPublishDate(date)
+    if (!postId || !date) return
+    try {
+      await updatePost.mutateAsync({
+        id: postId,
+        data: { publish_date: date },
+      })
+      setLastSavedAt(new Date())
+    } catch {
+      toast.error('Failed to save publish date')
+    }
+  }
 
   // Auto-save every 30s when post exists
   useEffect(() => {
@@ -312,7 +412,7 @@ export function BlogEditor({
           postId={postId ?? null}
           status={status}
           canEdit={canEdit}
-          onStatusChange={canEdit ? setStatus : () => {}}
+          onStatusChange={canEdit ? (s) => void handleStatusChange(s) : () => {}}
           onSaveDraft={canEdit ? () => void save('draft') : () => {}}
           onPublish={canEdit ? () => void save('published') : () => {}}
           isSaving={isSaving}
@@ -613,12 +713,93 @@ export function BlogEditor({
                 onTagsChange={setTags}
                 onAllowCommentsChange={setAllowComments}
                 onOgImageIsCoverChange={setOgIsCover}
-                onIsFeaturedChange={setIsFeatured}
+                onIsFeaturedChange={
+                  canFeaturePost(profile) ? setIsFeatured : undefined
+                }
+                canEdit={canEdit}
+                status={status}
+                publishDate={publishDate}
+                onPublishDateChange={(date) => void handlePublishDateChange(date)}
               />
             </div>
           </div>
         </div>
       </div>
+      )}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => {
+              setShowScheduleModal(false)
+              setPendingScheduleDate('')
+            }}
+          />
+          <div className="relative z-10 bg-[var(--color-surface)] rounded-2xl shadow-xl p-6 w-[360px] flex flex-col gap-4">
+            <div>
+              <h3 className="text-[16px] font-bold text-[var(--color-text-heading)] mb-1">
+                Schedule post
+              </h3>
+              <p className="text-[13px] text-[var(--color-text-secondary)]">
+                Choose when this post will be published automatically.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.07em] mb-1.5 text-[var(--color-text-muted)]">
+                Publish date
+              </label>
+              <input
+                type="date"
+                value={pendingScheduleDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setPendingScheduleDate(e.target.value)}
+                autoFocus
+                className="w-full h-[42px] px-3 rounded-xl text-[13px] border outline-none focus:border-[var(--color-accent)] transition-colors"
+                style={{
+                  borderColor: 'var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-body)',
+                }}
+              />
+              {pendingScheduleDate && (
+                <p className="text-[11px] mt-1.5 text-[var(--color-text-muted)]">
+                  Will publish on{' '}
+                  {new Date(pendingScheduleDate).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowScheduleModal(false)
+                  setPendingScheduleDate('')
+                }}
+                className="h-[38px] px-4 rounded-lg text-[13px] font-medium border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-surface-hover)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmSchedule()}
+                disabled={!pendingScheduleDate || isSaving}
+                className="h-[38px] px-4 rounded-lg text-[13px] font-semibold text-white bg-[var(--color-accent)] hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center gap-2"
+              >
+                {isSaving && (
+                  <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                )}
+                Schedule post
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

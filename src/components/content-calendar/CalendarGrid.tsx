@@ -1,8 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { CALENDAR_STATUS_CONFIG } from '@/constants/calendar-config'
-import type { CalendarEntry } from '@/types/calendar'
+import { ENTRY_TYPE_CONFIG, type CalendarEntry } from '@/types/calendar'
+import type { AuthProfile } from '@/stores/auth-store'
 
 const DAY_HEADERS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
@@ -23,6 +23,7 @@ interface CalendarGridProps {
   entries: CalendarEntry[]
   onEntryClick: (entry: CalendarEntry) => void
   onDayClick: (date: string) => void
+  profile?: AuthProfile | null
 }
 
 export function CalendarGrid({
@@ -117,22 +118,32 @@ export function CalendarGrid({
 
               <div className="flex flex-col gap-0.5">
                 {dayEntries.map((entry) => {
-                  const statusColor = CALENDAR_STATUS_CONFIG[entry.status]
+                  const config =
+                    ENTRY_TYPE_CONFIG[entry.entry_type] ?? ENTRY_TYPE_CONFIG.other
+                  const sourceLabel = entry.is_system
+                    ? (entry.source_type ?? 'system')
+                    : config.label
                   return (
                     <button
                       type="button"
                       key={entry.id}
+                      title={`${entry.title}${entry.is_system ? ` · ${sourceLabel}` : ''}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         onEntryClick(entry)
                       }}
-                      className="w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate transition-opacity hover:opacity-80"
+                      className="w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1"
                       style={{
-                        background: statusColor.bg,
-                        color: statusColor.text,
+                        background: config.bg,
+                        color: config.text,
                       }}
                     >
-                      {entry.title}
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ background: config.dot }}
+                      />
+                      {entry.is_system && <span className="shrink-0">🔒</span>}
+                      <span className="truncate">{entry.title}</span>
                     </button>
                   )
                 })}

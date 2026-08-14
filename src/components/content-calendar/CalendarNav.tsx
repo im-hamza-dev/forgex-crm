@@ -99,7 +99,7 @@ export function CalendarNav({
           className="h-[34px] px-4 rounded-lg text-[13px] font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
           style={{ background: 'var(--color-accent)' }}
         >
-          + Plan Post
+          + New Entry
         </button>
       </div>
     </div>

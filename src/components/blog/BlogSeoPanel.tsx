@@ -30,7 +30,11 @@ interface BlogSeoPanelProps {
   onTagsChange: (tags: string[]) => void
   onAllowCommentsChange: (v: boolean) => void
   onOgImageIsCoverChange: (v: boolean) => void
-  onIsFeaturedChange: (v: boolean) => void
+  onIsFeaturedChange?: (v: boolean) => void
+  canEdit?: boolean
+  status?: string
+  publishDate?: string
+  onPublishDateChange?: (date: string) => void
 }
 
 function AccordionSection({
@@ -151,6 +155,10 @@ export function BlogSeoPanel({
   onAllowCommentsChange,
   onOgImageIsCoverChange,
   onIsFeaturedChange,
+  canEdit = true,
+  status,
+  publishDate,
+  onPublishDateChange,
 }: BlogSeoPanelProps) {
   const { profile } = useAuth()
   const { data: categories = [] } = useBlogCategories()
@@ -341,6 +349,44 @@ export function BlogSeoPanel({
           )}
         </div>
 
+        {status === 'scheduled' && (
+          <div className="mb-3">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.06em] mb-1.5"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              Publish Date
+            </p>
+            <input
+              type="date"
+              value={publishDate ?? ''}
+              disabled={!canEdit}
+              onChange={(e) => onPublishDateChange?.(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full h-[36px] px-3 rounded-lg text-[13px] border outline-none transition-colors focus:border-[var(--color-accent)] disabled:opacity-50"
+              style={{
+                borderColor: 'var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-body)',
+              }}
+            />
+            {publishDate && (
+              <p
+                className="text-[11px] mt-1"
+                style={{ color: 'var(--color-text-muted)' }}
+              >
+                Will publish on{' '}
+                {new Date(publishDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+            )}
+          </div>
+        )}
+
         <label className="flex items-center justify-between mb-2 cursor-pointer">
           <span
             className="text-[12px] font-medium uppercase tracking-[0.05em]"
@@ -382,7 +428,7 @@ export function BlogSeoPanel({
             <input
               type="checkbox"
               checked={isFeatured}
-              onChange={(e) => onIsFeaturedChange(e.target.checked)}
+              onChange={(e) => onIsFeaturedChange?.(e.target.checked)}
               className="w-4 h-4 accent-[var(--color-accent)]"
             />
           </label>

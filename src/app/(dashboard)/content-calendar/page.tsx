@@ -1,21 +1,28 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout'
 import {
   CalendarGrid,
   CalendarNav,
   PlanPostModal,
 } from '@/components/content-calendar'
-import { MOCK_ENTRIES } from '@/components/content-calendar/mock-data'
+import { useAuth } from '@/hooks/useAuth'
+import { useCalendarEntries } from '@/hooks/useCalendar'
 import type { CalendarEntry } from '@/types/calendar'
 
 export default function CalendarPage() {
+  const router = useRouter()
+  const { profile } = useAuth()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
+  const [selectedEntry, setSelectedEntry] = useState<CalendarEntry | null>(null)
+
+  const { data: entries = [], isLoading } = useCalendarEntries(year, month)
 
   const goToPrev = () => {
     if (month === 0) {
@@ -38,16 +45,34 @@ export default function CalendarPage() {
   }
 
   const handleDayClick = (date: string) => {
+    setSelectedEntry(null)
     setSelectedDate(date)
     setModalOpen(true)
   }
 
   const handleEntryClick = (entry: CalendarEntry) => {
-    console.log('Entry clicked:', entry.title)
+    if (entry.is_system && entry.source_type && entry.source_id) {
+      if (entry.source_type === 'lead') {
+        router.push(`/leads?open=${entry.source_id}`)
+      } else if (
+        entry.source_type === 'project' ||
+        entry.source_type === 'milestone'
+      ) {
+        router.push(`/projects/${entry.source_id}`)
+      } else if (entry.source_type === 'task') {
+        router.push(`/tasks?open=${entry.source_id}`)
+      } else if (entry.source_type === 'blog') {
+        router.push(`/blog/${entry.source_id}`)
+      }
+      return
+    }
+    setSelectedEntry(entry)
+    setSelectedDate(entry.planned_date)
+    setModalOpen(true)
   }
 
   return (
-    <DashboardShell title="Content Calendar" notificationCount={3}>
+    <DashboardShell title="Content Calendar" notificationCount={0}>
       <CalendarNav
         year={year}
         month={month}
@@ -55,24 +80,42 @@ export default function CalendarPage() {
         onNext={goToNext}
         onToday={goToToday}
         onPlanPost={() => {
+          setSelectedEntry(null)
           setSelectedDate(undefined)
           setModalOpen(true)
         }}
       />
 
-      <CalendarGrid
-        year={year}
-        month={month}
-        entries={MOCK_ENTRIES}
-        onEntryClick={handleEntryClick}
-        onDayClick={handleDayClick}
-      />
+      {isLoading ? (
+        <div className="grid grid-cols-7 gap-px mt-4">
+          {Array.from({ length: 35 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[100px] animate-pulse rounded-lg"
+              style={{ background: 'var(--color-surface-hover)' }}
+            />
+          ))}
+        </div>
+      ) : (
+        <CalendarGrid
+          year={year}
+          month={month}
+          entries={entries}
+          onEntryClick={handleEntryClick}
+          onDayClick={handleDayClick}
+          profile={profile}
+        />
+      )}
 
       <PlanPostModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false)
+          setSelectedEntry(null)
+        }}
         defaultDate={selectedDate}
-        onSave={(values) => console.log('Save entry:', values)}
+        entry={selectedEntry}
+        profile={profile}
       />
     </DashboardShell>
   )
