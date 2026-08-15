@@ -5,6 +5,7 @@ import {
   getProjectUpdates,
   createProjectUpdate,
 } from '@/server/projects/projects.server'
+import { createNotificationForMany } from '@/server/notifications/notifications.server'
 
 const createSchema = z.object({
   content: z.string().min(1),
@@ -36,6 +37,27 @@ export async function POST(
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
     const data = await createProjectUpdate(id, parsed.data)
+    const { createServiceClient } = await import('@/lib/supabase/service')
+    const service = createServiceClient()
+    const { data: members } = await service
+      .from('project_members')
+      .select('user_id')
+      .eq('project_id', id)
+
+    const memberIds = (members ?? []).map((m) => m.user_id)
+
+    if (memberIds.length > 0) {
+      void createNotificationForMany(memberIds, {
+        type: 'project_updated',
+        title: 'New project update',
+        body: `${data.author?.full_name ?? 'Someone'} posted an update`,
+        reference_type: 'project',
+        reference_id: id,
+        actor_id: data.author_id,
+        actor_name: data.author?.full_name ?? undefined,
+        metadata: {},
+      })
+    }
     return created(data)
   } catch (error) {
     return handleRouteError(error)

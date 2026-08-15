@@ -5,6 +5,7 @@ import {
   updateCalendarEntry,
   deleteCalendarEntry,
 } from '@/server/calendar/calendar.server'
+import { createNotification } from '@/server/notifications/notifications.server'
 
 function isUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -47,6 +48,21 @@ export async function PATCH(
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
     const data = await updateCalendarEntry(id, parsed.data)
+    if (parsed.data.assigned_to && !data.source_type) {
+      void createNotification({
+        user_id: parsed.data.assigned_to,
+        type: 'calendar_assigned',
+        title: 'Calendar entry assigned to you',
+        body: `"${data.title}" has been assigned to you on ${data.planned_date}`,
+        reference_type: 'calendar',
+        reference_id: id,
+        metadata: {
+          entry_title: data.title,
+          planned_date: data.planned_date ?? '',
+          entry_type: data.entry_type,
+        },
+      })
+    }
     return ok(data)
   } catch (error) {
     return handleRouteError(error)

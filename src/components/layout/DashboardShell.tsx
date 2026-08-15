@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { CommandPalette } from './CommandPalette'
+import { NotificationPanel } from '@/components/notifications'
+import { useNotifications } from '@/hooks/useNotifications'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
@@ -15,6 +17,7 @@ interface DashboardShellProps {
   breadcrumb?: { label: string; href?: string }[]
   children: React.ReactNode
   noPadding?: boolean
+  /** Ignored — unread count comes from useNotifications */
   notificationCount?: number
 }
 
@@ -23,12 +26,13 @@ export function DashboardShell({
   breadcrumb,
   children,
   noPadding = false,
-  notificationCount = 0,
 }: DashboardShellProps) {
   const router = useRouter()
   const { profile, isLoading, signOut } = useAuth()
+  const { unreadCount } = useNotifications()
   const [collapsed, setCollapsed] = useState(true)
   const [cmdOpen, setCmdOpen] = useState(false)
+  const [bellOpen, setBellOpen] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -64,7 +68,7 @@ export function DashboardShell({
         userName={userName}
         userRole={userRole}
         userAvatarUrl={userAvatar}
-        notificationCount={notificationCount}
+        notificationCount={unreadCount}
         onSignOut={signOut}
       />
 
@@ -75,22 +79,27 @@ export function DashboardShell({
           collapsed ? 'pl-[56px]' : 'pl-[240px]',
         )}
       >
-        <Header
-          title={title}
-          breadcrumb={breadcrumb}
-          userName={userName}
-          userAvatarUrl={userAvatar}
-          notificationCount={notificationCount}
-          onSearchClick={() => setCmdOpen(true)}
-          onBellClick={() => router.push(ROUTES.NOTIFICATIONS)}
-          onAvatarClick={() => router.push(ROUTES.SETTINGS)}
-        />
+        <div className="relative">
+          <Header
+            title={title}
+            breadcrumb={breadcrumb}
+            userName={userName}
+            userAvatarUrl={userAvatar}
+            notificationCount={unreadCount}
+            onSearchClick={() => setCmdOpen(true)}
+            onBellClick={() => setBellOpen((v) => !v)}
+            onAvatarClick={() => router.push(ROUTES.SETTINGS)}
+          />
+          {bellOpen && (
+            <div className="absolute right-4 top-full z-50">
+              <NotificationPanel onClose={() => setBellOpen(false)} />
+            </div>
+          )}
+        </div>
 
         <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
 
-        <main className={cn('flex-1', !noPadding && 'p-6')}>
-          {children}
-        </main>
+        <main className={cn('flex-1', !noPadding && 'p-6')}>{children}</main>
       </div>
     </div>
   )

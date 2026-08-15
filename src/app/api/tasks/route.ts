@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { ok, badRequest } from '@/lib/api/responses'
 import { handleRouteError } from '@/server/shared/handle-route-error'
 import { getTasks, createTask } from '@/server/tasks/tasks.server'
+import { createNotification } from '@/server/notifications/notifications.server'
 import type { TaskFilters } from '@/types/tasks'
 
 const createSchema = z.object({
@@ -49,6 +50,21 @@ export async function POST(request: Request) {
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
     const data = await createTask(parsed.data)
+    if (parsed.data.assigned_to) {
+      void createNotification({
+        user_id: parsed.data.assigned_to,
+        type: 'task_assigned',
+        title: 'New task assigned to you',
+        body: `You have been assigned "${parsed.data.title}"`,
+        reference_type: 'task',
+        reference_id: data.id,
+        actor_name:
+          (data as { created_profile?: { full_name: string | null } | null })
+            .created_profile?.full_name ?? undefined,
+        actor_id: data.created_by,
+        metadata: { task_title: parsed.data.title },
+      })
+    }
     return ok(data)
   } catch (error) {
     return handleRouteError(error)

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createLeadNote, getLeadNotes } from '@/server/leads/leads.server'
 import { handleRouteError } from '@/server/shared/handle-route-error'
 import { ok, created, badRequest } from '@/lib/api/responses'
+import { createNotification } from '@/server/notifications/notifications.server'
 
 const schema = z.object({
   content: z.string().min(1),
@@ -40,6 +41,30 @@ export async function POST(
       parsed.data.content,
       parsed.data.note_type,
     )
+    const { createServiceClient } = await import('@/lib/supabase/service')
+    const service = createServiceClient()
+    const { data: lead } = await service
+      .from('leads')
+      .select('assigned_to, contact_name')
+      .eq('id', id)
+      .single()
+
+    if (lead?.assigned_to) {
+      void createNotification({
+        user_id: lead.assigned_to,
+        type: 'lead_note_added',
+        title: 'New note on your lead',
+        body: `${data.author?.full_name ?? 'Someone'} added a ${parsed.data.note_type} note on ${lead.contact_name ?? 'a lead'}`,
+        reference_type: 'lead',
+        reference_id: id,
+        actor_id: data.author_id,
+        actor_name: data.author?.full_name ?? undefined,
+        metadata: {
+          contact_name: lead.contact_name ?? '',
+          note_type: parsed.data.note_type,
+        },
+      })
+    }
     return created(data)
   } catch (error) {
     return handleRouteError(error)

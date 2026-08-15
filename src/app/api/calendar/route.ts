@@ -5,6 +5,7 @@ import {
   getCalendarEntries,
   createCalendarEntry,
 } from '@/server/calendar/calendar.server'
+import { createNotification } from '@/server/notifications/notifications.server'
 
 const createSchema = z.object({
   title: z.string().min(1),
@@ -57,6 +58,21 @@ export async function POST(request: Request) {
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
     const data = await createCalendarEntry(parsed.data)
+    if (parsed.data.assigned_to && !parsed.data.source_type) {
+      void createNotification({
+        user_id: parsed.data.assigned_to,
+        type: 'calendar_assigned',
+        title: 'Calendar entry assigned to you',
+        body: `"${parsed.data.title}" has been assigned to you on ${parsed.data.planned_date}`,
+        reference_type: 'calendar',
+        reference_id: data.id,
+        metadata: {
+          entry_title: parsed.data.title,
+          planned_date: parsed.data.planned_date,
+          entry_type: parsed.data.entry_type,
+        },
+      })
+    }
     return ok(data)
   } catch (error) {
     return handleRouteError(error)

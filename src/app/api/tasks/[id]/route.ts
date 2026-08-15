@@ -6,6 +6,7 @@ import {
   updateTask,
   deleteTask,
 } from '@/server/tasks/tasks.server'
+import { createNotification } from '@/server/notifications/notifications.server'
 
 const updateSchema = z
   .object({
@@ -49,6 +50,36 @@ export async function PATCH(
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
     const data = await updateTask(id, parsed.data)
+    if (parsed.data.assigned_to) {
+      void createNotification({
+        user_id: parsed.data.assigned_to,
+        type: 'task_assigned',
+        title: 'Task assigned to you',
+        body: `You have been assigned "${data.title}"`,
+        reference_type: 'task',
+        reference_id: id,
+        actor_id: data.created_by,
+        actor_name:
+          (data as { created_profile?: { full_name: string | null } | null })
+            .created_profile?.full_name ?? undefined,
+        metadata: { task_title: data.title },
+      })
+    }
+    if (parsed.data.status === 'done' && data.created_by) {
+      void createNotification({
+        user_id: data.created_by,
+        type: 'task_completed',
+        title: 'Task completed',
+        body: `"${data.title}" has been marked as done`,
+        reference_type: 'task',
+        reference_id: id,
+        actor_id: data.assigned_to ?? undefined,
+        actor_name:
+          (data as { assigned_profile?: { full_name: string | null } | null })
+            .assigned_profile?.full_name ?? undefined,
+        metadata: { task_title: data.title },
+      })
+    }
     return ok(data)
   } catch (error) {
     return handleRouteError(error)

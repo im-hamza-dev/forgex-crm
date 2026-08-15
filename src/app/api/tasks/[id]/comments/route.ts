@@ -5,6 +5,7 @@ import {
   getTaskComments,
   createTaskComment,
 } from '@/server/tasks/tasks.server'
+import { createNotificationForMany } from '@/server/notifications/notifications.server'
 
 const createSchema = z.object({
   content: z.string().min(1),
@@ -35,6 +36,36 @@ export async function POST(
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
     const data = await createTaskComment(id, parsed.data.content)
+    const { createServiceClient } = await import('@/lib/supabase/service')
+    const service = createServiceClient()
+    const { data: task } = await service
+      .from('tasks')
+      .select('assigned_to, created_by, title')
+      .eq('id', id)
+      .single()
+    const { data: author } = await service
+      .from('profiles')
+      .select('full_name')
+      .eq('id', data.author_id)
+      .single()
+
+    const recipients = [
+      ...(task?.assigned_to ? [task.assigned_to] : []),
+      ...(task?.created_by ? [task.created_by] : []),
+    ].filter((uid, idx, arr) => arr.indexOf(uid) === idx)
+
+    if (recipients.length > 0) {
+      void createNotificationForMany(recipients, {
+        type: 'task_comment_added',
+        title: 'New comment on task',
+        body: `${author?.full_name ?? 'Someone'} commented on "${task?.title ?? 'a task'}"`,
+        reference_type: 'task',
+        reference_id: id,
+        actor_id: data.author_id,
+        actor_name: author?.full_name ?? undefined,
+        metadata: { task_title: task?.title ?? '' },
+      })
+    }
     return ok(data)
   } catch (error) {
     return handleRouteError(error)
