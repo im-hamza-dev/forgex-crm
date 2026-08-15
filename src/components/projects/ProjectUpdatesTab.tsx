@@ -14,7 +14,7 @@ import {
 } from '@/hooks/useProjects'
 import {
   canDeleteUpdate,
-  canToggleClientVisibility,
+  canToggleUpdateClientVisibility,
 } from '@/lib/project-permissions'
 import type { Project } from '@/types/projects'
 
@@ -30,7 +30,7 @@ export function ProjectUpdatesTab({ project }: { project: Project }) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
-  const canToggle = canToggleClientVisibility(profile)
+  const canToggle = canToggleUpdateClientVisibility(profile)
 
   const handlePost = async () => {
     if (!updateText.trim()) return
@@ -38,7 +38,7 @@ export function ProjectUpdatesTab({ project }: { project: Project }) {
       await createUpdate.mutateAsync({
         projectId: project.id,
         content: updateText.trim(),
-        is_client_visible: visibleToClient,
+        is_client_visible: canToggle ? visibleToClient : false,
       })
       toast.success('Update posted')
       setUpdateText('')

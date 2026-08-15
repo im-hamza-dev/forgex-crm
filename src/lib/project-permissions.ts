@@ -37,6 +37,13 @@ export function canToggleClientVisibility(
   return profile.role === 'admin' || profile.role === 'manager'
 }
 
+export function canToggleUpdateClientVisibility(
+  profile: AuthProfile | null,
+): boolean {
+  if (!profile) return false
+  return profile.role === 'admin'
+}
+
 export function canDeleteUpdate(
   profile: AuthProfile | null,
   authorId: string,

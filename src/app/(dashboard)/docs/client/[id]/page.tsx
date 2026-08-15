@@ -1,20 +1,20 @@
 'use client'
 
 import { use } from 'react'
-import { DocEditor } from '@/components/docs/DocEditor'
-import { useInternalDoc } from '@/hooks/useDocs'
+import { ClientDocEditor } from '@/components/docs/ClientDocEditor'
+import { useClientDocument } from '@/hooks/useDocs'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export default function EditDocPage({
+export default function EditClientDocPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
   const isValid = UUID_REGEX.test(id)
-  const { data: doc, isLoading } = useInternalDoc(isValid ? id : null)
+  const { data: doc, isLoading } = useClientDocument(isValid ? id : null)
 
   if (!isValid) return null
 
@@ -26,5 +26,5 @@ export default function EditDocPage({
     )
   }
 
-  return <DocEditor doc={doc ?? null} />
+  return <ClientDocEditor doc={doc ?? null} />
 }

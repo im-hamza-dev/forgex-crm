@@ -65,6 +65,15 @@ export const queryKeys = {
   },
 
   // Docs
-  docs: ['docs'] as const,
-  doc: (id: string) => ['docs', id] as const,
+  docs: {
+    all: ['docs'] as const,
+    internalList: (filters: Record<string, unknown>) =>
+      ['docs', 'internal', 'list', filters] as const,
+    internalDetail: (id: string) =>
+      ['docs', 'internal', 'detail', id] as const,
+    clientList: () => ['docs', 'client', 'list'] as const,
+    clientDetail: (id: string) => ['docs', 'client', 'detail', id] as const,
+    clientAccounts: () => ['docs', 'client-accounts'] as const,
+  },
+  doc: (id: string) => ['docs', 'internal', 'detail', id] as const,
 } as const

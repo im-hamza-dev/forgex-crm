@@ -1,4 +1,6 @@
+export { DocEditor } from './DocEditor'
+export { ClientDocEditor } from './ClientDocEditor'
+export { RichDocEditor } from './RichDocEditor'
+export { DocsListPanel } from './DocsListPanel'
 export { DocsSidebar } from './DocsSidebar'
 export type { DocsFilter } from './DocsSidebar'
-export { DocsListPanel } from './DocsListPanel'
-export { DocEditor } from './DocEditor'

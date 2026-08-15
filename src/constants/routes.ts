@@ -31,6 +31,8 @@ export const ROUTES = {
   DOCS:             '/docs',
   DOC:              (id: string) => `/docs/${id}`,
   DOC_NEW:          '/docs/new',
+  DOC_CLIENT:       (id: string) => `/docs/client/${id}`,
+  DOC_CLIENT_NEW:   '/docs/client/new',
 
   // Team & Settings
   TEAM:             '/team',

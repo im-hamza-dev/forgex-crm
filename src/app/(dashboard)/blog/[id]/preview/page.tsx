@@ -2,6 +2,8 @@
 
 import { use, type ReactNode } from 'react'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { ArrowLeft, Clock, Calendar, Eye } from 'lucide-react'
 import { useBlogPost } from '@/hooks/useBlog'
 import { Avatar } from '@/components/ui'
@@ -205,13 +207,38 @@ function renderTipTapNode(
   }
 }
 
-function renderBody(body: unknown): ReactNode {
-  if (!body || typeof body !== 'object') {
+function renderMarkdown(markdown: string): ReactNode {
+  if (!markdown.trim()) {
     return (
       <p className="text-[var(--color-text-muted)] italic">No content yet.</p>
     )
   }
-  return renderTipTapNode(body as Record<string, unknown>, 0)
+  return (
+    <div className="docs-preview prose max-w-none text-[15px] leading-relaxed">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+    </div>
+  )
+}
+
+function renderBody(body: unknown): ReactNode {
+  if (!body) {
+    return (
+      <p className="text-[var(--color-text-muted)] italic">No content yet.</p>
+    )
+  }
+  if (typeof body === 'string') {
+    return renderMarkdown(body)
+  }
+  if (typeof body === 'object') {
+    const rec = body as Record<string, unknown>
+    if (rec.type === 'markdown' && typeof rec.body === 'string') {
+      return renderMarkdown(rec.body)
+    }
+    return renderTipTapNode(rec, 0)
+  }
+  return (
+    <p className="text-[var(--color-text-muted)] italic">No content yet.</p>
+  )
 }
 
 export default function BlogPreviewPage({

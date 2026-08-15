@@ -25,6 +25,7 @@ import { ROUTES } from '@/constants/routes'
 import { BlogEditorHeader } from './BlogEditorHeader'
 import { BlogSeoPanel } from './BlogSeoPanel'
 import { TipTapEditor } from './TipTapEditor'
+import { markdownToDoc } from '@/components/docs/RichDocEditor'
 import type { BlogPost, BlogPostStatus } from '@/types/blog'
 import type { Json } from '@/types/database.types'
 
@@ -34,13 +35,11 @@ interface BlogEditorProps {
   isNew?: boolean
 }
 
-function isTipTapDoc(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'type' in value &&
-    (value as { type?: string }).type === 'doc'
-  )
+function asContentRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  return null
 }
 
 function bodyToEditorContent(
@@ -50,21 +49,14 @@ function bodyToEditorContent(
   if (typeof body === 'string') {
     try {
       const parsed: unknown = JSON.parse(body)
-      return isTipTapDoc(parsed) ? parsed : null
+      const rec = asContentRecord(parsed)
+      if (rec) return rec
     } catch {
-      return {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [{ type: 'text', text: body }],
-          },
-        ],
-      }
+      // stored as raw markdown
     }
+    return markdownToDoc(body)
   }
-  if (isTipTapDoc(body)) return body as Record<string, unknown>
-  return null
+  return asContentRecord(body)
 }
 
 export function BlogEditor({
