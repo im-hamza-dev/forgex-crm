@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Plus, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ROUTES } from '@/constants/routes'
 import { DashboardShell } from '@/components/layout'
@@ -8,63 +10,7 @@ import {
   ActivityFeed,
   TasksDueToday,
 } from '@/components/dashboard'
-
-const MOCK_LEADS = [
-  { name: 'Sarah Chen', company: 'Acme Health Co', stage: 'Qualified', date: '2026-08-13' },
-  { name: 'Marcus Webb', company: 'PayFlow SaaS', stage: 'Proposal Sent', date: '2026-08-11' },
-  { name: 'Priya Sharma', company: 'GrowthOS', stage: 'Contacted', date: '2026-08-15' },
-  { name: 'James Okafor', company: 'NovaBuild', stage: 'Negotiation', date: '2026-08-12' },
-  { name: 'David Reyes', company: 'ClinicOS', stage: 'New Lead', date: '2026-08-20' },
-]
-
-const MOCK_ACTIVITY = [
-  { text: 'PayFlow SaaS moved to Proposal Sent', time: '1h ago' },
-  { text: 'Hamza added a note to NovaBuild', time: '3h ago' },
-  { text: 'Sara Ahmed updated Patient Acquisition System to 68%', time: '5h ago' },
-  { text: 'Zain submitted a blog post for review', time: 'Yesterday' },
-  { text: 'ClinicOS added as a new lead', time: 'Yesterday' },
-]
-
-const MOCK_TASKS = [
-  {
-    title: 'Build appointment booking API',
-    project: 'Patient Acquisition System',
-    priority: 'Urgent' as const,
-    assigneeName: 'Hamza Iqbal',
-    due: '2026-08-11',
-    overdue: true,
-  },
-  {
-    title: 'Design patient dashboard UI',
-    project: 'Patient Acquisition System',
-    priority: 'High' as const,
-    assigneeName: 'Sara Ahmed',
-    due: '2026-08-14',
-  },
-  {
-    title: 'CRM integration spec',
-    project: 'B2B Pipeline OS',
-    priority: 'Medium' as const,
-    assigneeName: 'Sara Ahmed',
-    due: '2026-08-12',
-  },
-  {
-    title: 'Discovery call follow-up deck',
-    project: 'Coaching Growth Platform',
-    priority: 'Low' as const,
-    assigneeName: 'Hamza Iqbal',
-    due: '2026-08-11',
-    overdue: true,
-  },
-  {
-    title: 'Review client feedback doc',
-    project: 'B2B Pipeline OS',
-    priority: 'High' as const,
-    assigneeName: 'Sara Ahmed',
-    due: '2026-08-11',
-    overdue: true,
-  },
-]
+import { getDashboardData } from '@/server/dashboard/dashboard.server'
 
 function getGreeting(): string {
   const h = new Date().getHours()
@@ -88,9 +34,7 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect(ROUTES.LOGIN)
-  }
+  if (!user) redirect(ROUTES.LOGIN)
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -99,9 +43,14 @@ export default async function DashboardPage() {
     .single()
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+  const role = profile?.role ?? 'member'
+  const isAdmin = role === 'admin'
+  const isManager = role === 'manager'
+
+  const data = await getDashboardData()
 
   return (
-    <DashboardShell title="Dashboard" notificationCount={3}>
+    <DashboardShell title="Dashboard">
       <div className="flex items-baseline justify-between mb-6">
         <h2 className="text-[28px] font-bold leading-tight text-[var(--color-text-heading)]">
           {getGreeting()}, {firstName}
@@ -111,39 +60,185 @@ export default async function DashboardPage() {
         </span>
       </div>
 
+      {(isAdmin || isManager) && (
+        <div className="flex flex-col gap-2 mb-4">
+          {data.pendingBlogReviews > 0 && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl border text-[13px] font-medium"
+              style={{
+                background: 'var(--color-warning-bg)',
+                borderColor: 'var(--color-warning)',
+                color: 'var(--color-warning)',
+              }}
+            >
+              <AlertCircle size={15} />
+              {data.pendingBlogReviews} blog post
+              {data.pendingBlogReviews !== 1 ? 's' : ''} pending review
+              <Link
+                href={ROUTES.BLOG}
+                className="ml-auto text-[12px] underline hover:opacity-70 transition-opacity"
+              >
+                Review now →
+              </Link>
+            </div>
+          )}
+          {data.openTickets > 0 && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl border text-[13px] font-medium"
+              style={{
+                background: 'var(--color-danger-bg)',
+                borderColor: 'var(--color-danger)',
+                color: 'var(--color-danger)',
+              }}
+            >
+              <AlertCircle size={15} />
+              {data.openTickets} open support ticket
+              {data.openTickets !== 1 ? 's' : ''}
+              <Link
+                href={ROUTES.PROJECTS}
+                className="ml-auto text-[12px] underline hover:opacity-70 transition-opacity"
+              >
+                View tickets →
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          label="Active Leads"
-          value="12"
-          sub="↑ 3 this week"
-          subVariant="success"
-        />
-        <KpiCard
-          label="Active Projects"
-          value="4"
-          sub="2 on track"
-          subVariant="success"
-        />
-        <KpiCard
-          label="Tasks Due Today"
-          value="7"
-          sub="3 overdue"
-          subVariant="danger"
-        />
-        <KpiCard
-          label="Follow-ups Due"
-          value="5"
-          sub="Due today"
-          subVariant="warning"
-        />
+        <Link href={ROUTES.LEADS} className="block">
+          <KpiCard
+            label={role === 'member' ? 'My Leads' : 'Active Leads'}
+            value={data.kpis.activeLeads}
+            sub={data.kpis.activeLeadsSub}
+            subVariant={data.kpis.activeLeadsSub.includes('↑') ? 'success' : 'muted'}
+          />
+        </Link>
+        {role !== 'member' && (
+          <Link href={ROUTES.PROJECTS} className="block">
+            <KpiCard
+              label="Active Projects"
+              value={data.kpis.activeProjects}
+              sub={data.kpis.activeProjectsSub}
+              subVariant="success"
+            />
+          </Link>
+        )}
+        {role === 'member' && (
+          <Link href={ROUTES.TASKS} className="block">
+            <KpiCard
+              label="My Tasks"
+              value={data.kpis.tasksDueToday}
+              sub={data.kpis.tasksDueTodaySub}
+              subVariant={
+                data.kpis.tasksDueTodaySub.includes('overdue') ? 'danger' : 'success'
+              }
+            />
+          </Link>
+        )}
+        {role !== 'member' && (
+          <Link href={ROUTES.TASKS} className="block">
+            <KpiCard
+              label="Tasks Due Today"
+              value={data.kpis.tasksDueToday}
+              sub={data.kpis.tasksDueTodaySub}
+              subVariant={
+                data.kpis.tasksDueTodaySub.includes('overdue') ? 'danger' : 'success'
+              }
+            />
+          </Link>
+        )}
+        <Link href={ROUTES.LEADS} className="block">
+          <KpiCard
+            label="Follow-ups Due"
+            value={data.kpis.followUpsDue}
+            sub={data.kpis.followUpsSub}
+            subVariant={data.kpis.followUpsDue > 0 ? 'warning' : 'muted'}
+          />
+        </Link>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mr-1">
+          Quick Actions
+        </span>
+        <Link
+          href={`${ROUTES.LEADS}?new=true`}
+          className="flex items-center gap-1.5 h-[30px] px-3 rounded-lg text-[12px] font-medium border transition-colors hover:bg-[var(--color-surface-hover)]"
+          style={{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-body)',
+          }}
+        >
+          <Plus size={12} />
+          New Lead
+        </Link>
+        {(isAdmin || isManager) && (
+          <Link
+            href={`${ROUTES.PROJECTS}?new=true`}
+            className="flex items-center gap-1.5 h-[30px] px-3 rounded-lg text-[12px] font-medium border transition-colors hover:bg-[var(--color-surface-hover)]"
+            style={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-body)',
+            }}
+          >
+            <Plus size={12} />
+            New Project
+          </Link>
+        )}
+        <Link
+          href={`${ROUTES.TASKS}?new=true`}
+          className="flex items-center gap-1.5 h-[30px] px-3 rounded-lg text-[12px] font-medium border transition-colors hover:bg-[var(--color-surface-hover)]"
+          style={{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-body)',
+          }}
+        >
+          <Plus size={12} />
+          New Task
+        </Link>
+        {isAdmin && (
+          <Link
+            href={ROUTES.TEAM}
+            className="flex items-center gap-1.5 h-[30px] px-3 rounded-lg text-[12px] font-medium border transition-colors hover:bg-[var(--color-surface-hover)]"
+            style={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-body)',
+            }}
+          >
+            <Plus size={12} />
+            Invite Member
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4 mb-4">
-        <RecentLeads leads={MOCK_LEADS} />
-        <ActivityFeed items={MOCK_ACTIVITY} />
+        <RecentLeads
+          leads={data.recentLeads.map((l) => ({
+            name: l.name,
+            company: l.company ?? '',
+            stage: l.stage,
+            date: l.date,
+          }))}
+        />
+        <ActivityFeed items={data.activity} />
       </div>
 
-      <TasksDueToday tasks={MOCK_TASKS} />
+      {data.tasksDueToday.length > 0 ? (
+        <TasksDueToday tasks={data.tasksDueToday} />
+      ) : (
+        <div
+          className="rounded-xl border p-8 text-center"
+          style={{
+            borderColor: 'var(--color-border)',
+            background: 'var(--color-surface)',
+          }}
+        >
+          <p className="text-[14px] font-medium text-[var(--color-text-muted)]">
+            No tasks due today
+          </p>
+        </div>
+      )}
     </DashboardShell>
   )
 }

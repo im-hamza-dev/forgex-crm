@@ -1,6 +1,3 @@
-'use client'
-
-import { useState } from 'react'
 import { DashboardShell } from '@/components/layout'
 import {
   LeadPipelineChart,
@@ -10,36 +7,56 @@ import {
   TeamActivityTable,
   DateRangeDropdown,
 } from '@/components/reports'
+import { getReportsData } from '@/server/reports/reports.server'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { ROUTES } from '@/constants/routes'
 
-export default function ReportsPage() {
-  const [dateRange, setDateRange] = useState('Last 30 days')
+interface ReportsPageProps {
+  searchParams: Promise<{ range?: string }>
+}
+
+export default async function ReportsPage({ searchParams }: ReportsPageProps) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect(ROUTES.LOGIN)
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') redirect(ROUTES.DASHBOARD)
+
+  const { range = 'Last 30 days' } = await searchParams
+  const data = await getReportsData(range)
 
   return (
-    <DashboardShell title="Reports" notificationCount={3}>
+    <DashboardShell title="Reports">
       <div className="flex items-center justify-between mb-5">
-        <h2
-          className="text-[22px] font-bold"
-          style={{ color: 'var(--color-text-heading)' }}
-        >
+        <h2 className="text-[22px] font-bold" style={{ color: 'var(--color-text-heading)' }}>
           Reports
         </h2>
-        <DateRangeDropdown value={dateRange} onChange={setDateRange} />
+        <DateRangeDropdown value={range} />
       </div>
 
       <div className="mb-4">
-        <LeadPipelineChart />
+        <LeadPipelineChart stages={data.pipelineStages} kpis={data.pipelineKpis} />
       </div>
 
       <div className="flex gap-4 mb-4">
-        <LeadSourcesChart />
-        <RevenueCard />
+        <LeadSourcesChart sources={data.leadSources} />
+        <RevenueCard data={data.revenue} />
       </div>
 
       <div className="mb-4">
-        <ActiveProjectsTable />
+        <ActiveProjectsTable projects={data.activeProjects} />
       </div>
 
-      <TeamActivityTable />
+      <TeamActivityTable stats={data.teamStats} />
     </DashboardShell>
   )
 }

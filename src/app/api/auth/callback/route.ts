@@ -14,16 +14,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}${ROUTES.LOGIN}?error=${error}`)
   }
 
-  // Invite link — redirect directly to accept-invite
-  // Browser client handles hash tokens automatically
   if (type === 'invite') {
     return NextResponse.redirect(`${origin}${ROUTES.ACCEPT_INVITE}`)
   }
 
-  // Google OAuth — PKCE code exchange
   if (code) {
     const supabase = await createClient()
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    const { error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code)
 
     if (!exchangeError) {
       const {
@@ -36,26 +34,44 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // Check if this user has been invited (has a profile row)
-      // Use service client to bypass RLS
       const serviceSupabase = createServiceClient()
+
       const { data: profile } = await serviceSupabase
         .from('profiles')
-        .select('id, role')
+        .select('id, role, is_active')
         .eq('id', user.id)
         .maybeSingle()
 
       if (!profile) {
-        // User authenticated with Google but was never invited
-        // Sign them out and redirect with error
+        await serviceSupabase.auth.admin.deleteUser(user.id)
         await supabase.auth.signOut()
         return NextResponse.redirect(
           `${origin}${ROUTES.LOGIN}?error=not_invited`,
         )
       }
 
-      // Handle team member invite redirect
-      if (user.user_metadata?.invited_role) {
+      if (!profile.is_active) {
+        await supabase.auth.signOut()
+        return NextResponse.redirect(
+          `${origin}${ROUTES.LOGIN}?error=account_inactive`,
+        )
+      }
+
+      const metadata = user.user_metadata as Record<string, unknown> | undefined
+      const hasInvitedRole = Boolean(metadata?.invited_role)
+      const isAdmin = profile.role === 'admin'
+      const wasInvited = Boolean(metadata?.invited_at) || hasInvitedRole
+
+      if (!isAdmin && !wasInvited) {
+        await serviceSupabase.from('profiles').delete().eq('id', user.id)
+        await serviceSupabase.auth.admin.deleteUser(user.id)
+        await supabase.auth.signOut()
+        return NextResponse.redirect(
+          `${origin}${ROUTES.LOGIN}?error=not_invited`,
+        )
+      }
+
+      if (metadata?.invited_role) {
         return NextResponse.redirect(`${origin}${ROUTES.ACCEPT_INVITE}`)
       }
 
