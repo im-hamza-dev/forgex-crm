@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Forgex CRM | Privacy Policy',
+  description: 'Forgex CRM is a client relationship management platform by Forgex Systems.',
 }
 
 export default function PrivacyPage() {
@@ -52,6 +53,11 @@ export default function PrivacyPage() {
           </span>
         </div>
 
+        <p style={{ fontSize: '15px', color: '#3D2E1E', marginBottom: '24px', lineHeight: 1.7 }}>
+          Forgex CRM is a client relationship management platform built by Forgex Systems
+          for managing leads, projects, tasks, client communications, and team collaboration.
+        </p>
+
         <h1
           style={{
             fontSize: '28px',
@@ -63,10 +69,6 @@ export default function PrivacyPage() {
         >
           Forgex CRM — Privacy Policy
         </h1>
-        <p style={{ fontSize: '15px', color: '#3D2E1E', marginBottom: '36px' }}>
-          Forgex CRM is a client relationship management platform by Forgex Systems,
-          used for managing leads, projects, tasks, and client communications.
-        </p>
 
         {[
           {
