@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Forgex Systems',
-  description: 'Privacy policy for Forgex CRM platform.',
+  title: 'Forgex CRM | Privacy Policy',
 }
 
 export default function PrivacyPage() {
@@ -62,16 +61,11 @@ export default function PrivacyPage() {
             margin: '0 0 8px',
           }}
         >
-          Privacy Policy
+          Forgex CRM — Privacy Policy
         </h1>
-        <p
-          style={{
-            fontSize: '14px',
-            color: '#B0A090',
-            marginBottom: '36px',
-          }}
-        >
-          Last updated: August 2026
+        <p style={{ fontSize: '15px', color: '#3D2E1E', marginBottom: '36px' }}>
+          Forgex CRM is a client relationship management platform by Forgex Systems,
+          used for managing leads, projects, tasks, and client communications.
         </p>
 
         {[
