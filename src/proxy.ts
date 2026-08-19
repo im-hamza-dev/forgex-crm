@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   '/manifest.json',
   '/portal/manifest.webmanifest',
   '/sw.js',
+  '/privacy',
 ]
 
 const ROLE_MAP: Record<string, Record<string, boolean>> = {
