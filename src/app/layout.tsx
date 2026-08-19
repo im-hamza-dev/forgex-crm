@@ -8,28 +8,16 @@ export const metadata: Metadata = {
     default: 'Forgex CRM',
     template: '%s | Forgex CRM',
   },
-  description:
-    'Client relationship management for Forgex Systems — manage leads, projects, tasks, and client communications in one place.',
-  keywords: ['CRM', 'project management', 'leads', 'client portal', 'Forgex'],
-  authors: [{ name: 'Forgex Systems', url: 'https://forgex.systems' }],
-  creator: 'Forgex Systems',
+  description: 'Internal CRM for Forgex Systems',
   robots: { index: false, follow: false },
+  verification: {
+    google: 'QmCIj17LRMCrEv8ivpF21gW3U6RzXuobdaP6ndSU6Lo',
+  },
   icons: {
-    icon: [
-      { url: '/favicon.png', type: 'image/png' },
-      { url: '/favicon.ico', sizes: '32x32' },
-    ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
-    shortcut: '/favicon.png',
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
   },
   manifest: '/manifest.json',
-  openGraph: {
-    title: 'Forgex CRM',
-    description: 'Client relationship management for Forgex Systems',
-    siteName: 'Forgex CRM',
-    locale: 'en_US',
-    type: 'website',
-  },
 }
 
 export default function RootLayout({
