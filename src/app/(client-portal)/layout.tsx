@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   description:
     'Track your project progress, view files, and communicate with the Forgex team.',
-  manifest: '/portal/manifest.webmanifest',
+  manifest: '/portal/manifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

@@ -9,11 +9,13 @@ const PUBLIC_PATHS = [
   '/reset-password',
   '/accept-invite',
   '/portal/accept',
-  '/api/auth',
+  '/privacy',
   '/manifest.json',
   '/portal/manifest.webmanifest',
+  '/portal/manifest',
   '/sw.js',
-  '/privacy',
+  '/google74af155327ae2e69.html',
+  '/api/auth',
 ]
 
 const ROLE_MAP: Record<string, Record<string, boolean>> = {

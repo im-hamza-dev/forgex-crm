@@ -10,7 +10,7 @@ export function PortalSWRegister() {
     ) {
       const onLoad = () => {
         navigator.serviceWorker
-          .register('/sw.js', { scope: '/portal/' })
+          .register('/sw.js', { scope: '/' })
           .then((reg) => {
             console.log('[PWA] Service worker registered', reg.scope)
 
