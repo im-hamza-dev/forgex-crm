@@ -11,6 +11,7 @@ import {
   UserX,
   UserCheck,
   Clock,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DashboardShell } from '@/components/layout'
@@ -20,6 +21,7 @@ import {
   useTeamMembers,
   usePendingInvites,
   useTeamActions,
+  useClients,
 } from '@/hooks/useTeam'
 import {
   INVITE_ROLE_OPTIONS,
@@ -27,12 +29,17 @@ import {
   type TeamRole,
 } from '@/constants/roles'
 import { ROUTES } from '@/constants/routes'
-import type { TeamMember, PendingInvite } from '@/server/team/team.server'
+import type {
+  TeamMember,
+  PendingInvite,
+  ClientAccount,
+} from '@/server/team/team.server'
 
 const ROLE_BADGE: Record<TeamRole, { bg: string; text: string }> = {
   admin: { bg: 'var(--color-accent-subtle)', text: 'var(--color-accent)' },
   manager: { bg: '#EEF3FA', text: '#1A3D6B' },
   member: { bg: '#F5F5F5', text: '#6B6B6B' },
+  client: { bg: '#F5F5F5', text: '#6B6B6B' },
 }
 
 export default function TeamPage() {
@@ -42,7 +49,15 @@ export default function TeamPage() {
 
   const { data: members = [], isLoading } = useTeamMembers()
   const { data: pending = [] } = usePendingInvites()
-  const { updateRole, deactivate, reactivate, cancelInvite } = useTeamActions()
+  const { data: clients = [] } = useClients()
+  const {
+    updateRole,
+    deactivate,
+    reactivate,
+    cancelInvite,
+    revokeClient: revokeClientAction,
+    reinstateClient: reinstateClientAction,
+  } = useTeamActions()
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteLoading, setInviteLoading] = useState(false)
@@ -56,6 +71,9 @@ export default function TeamPage() {
     null,
   )
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [confirmRevokeClient, setConfirmRevokeClient] =
+    useState<ClientAccount | null>(null)
+  const [openClientMenuId, setOpenClientMenuId] = useState<string | null>(null)
 
   const resetInviteForm = () => {
     setInviteEmail('')
@@ -155,6 +173,8 @@ export default function TeamPage() {
             {activeMembers.length !== 1 ? 's' : ''}
             {pending.length > 0 &&
               ` · ${pending.length} pending invite${pending.length !== 1 ? 's' : ''}`}
+            {clients.length > 0 &&
+              ` · ${clients.length} client${clients.length !== 1 ? 's' : ''}`}
           </p>
         </div>
         {isAdmin && (
@@ -175,13 +195,17 @@ export default function TeamPage() {
         </div>
       ) : (
         <div
-          className="rounded-xl border overflow-hidden mb-6"
+          className="rounded-xl border mb-6"
           style={{
             borderColor: 'var(--color-border)',
             background: 'var(--color-surface)',
+            overflow: 'visible',
           }}
         >
-          <table className="w-full">
+          <table
+            className="w-full"
+            style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+          >
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                 {['Member', 'Email', 'Role', 'Status', ''].map((col, i) => (
@@ -490,6 +514,223 @@ export default function TeamPage() {
         </div>
       )}
 
+      {isAdmin && clients.length > 0 && (
+        <div className="mt-6">
+          <h3
+            className="text-[13px] font-semibold mb-3 uppercase tracking-[0.06em]"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Clients — {clients.length}
+          </h3>
+          <div
+            className="rounded-xl border"
+            style={{
+              borderColor: 'var(--color-border)',
+              background: 'var(--color-surface)',
+              overflow: 'visible',
+            }}
+          >
+            <table
+              className="w-full"
+              style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+            >
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  {['Client', 'Email', 'Project', 'Status', ''].map((col, i) => (
+                    <th
+                      key={col || 'actions'}
+                      className={cn(
+                        'py-3 text-[11px] font-semibold uppercase tracking-[0.06em]',
+                        i === 0
+                          ? 'text-left pl-5'
+                          : i === 4
+                            ? 'text-right pr-5 w-[60px]'
+                            : 'text-left',
+                      )}
+                      style={{ color: 'var(--color-text-muted)' }}
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((client, i) => (
+                  <tr
+                    key={client.id}
+                    style={{
+                      borderBottom:
+                        i < clients.length - 1
+                          ? '1px solid var(--color-border)'
+                          : undefined,
+                    }}
+                  >
+                    <td className="py-3.5 pl-5 pr-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0"
+                          style={{ background: 'var(--color-accent)' }}
+                        >
+                          {(client.full_name ?? client.email)
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                        <div>
+                          <p
+                            className="text-[14px] font-semibold"
+                            style={{ color: 'var(--color-text-heading)' }}
+                          >
+                            {client.full_name ?? '—'}
+                          </p>
+                          {client.company && (
+                            <p
+                              className="text-[11px]"
+                              style={{ color: 'var(--color-text-muted)' }}
+                            >
+                              {client.company}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span
+                        className="text-[13px]"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                      >
+                        {client.email}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span
+                        className="text-[13px] font-medium"
+                        style={{ color: 'var(--color-text-body)' }}
+                      >
+                        {client.project_name ?? '—'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      {client.status === 'active' && (
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: 'var(--color-success)' }}
+                          />
+                          <span
+                            className="text-[13px]"
+                            style={{ color: 'var(--color-text-body)' }}
+                          >
+                            Active
+                          </span>
+                        </span>
+                      )}
+                      {client.status === 'pending' && (
+                        <span
+                          className="text-[12px] font-medium px-2.5 py-1 rounded-full"
+                          style={{ background: '#FEF7E6', color: '#8B5E00' }}
+                        >
+                          Awaiting acceptance
+                        </span>
+                      )}
+                      {client.status === 'revoked' && (
+                        <span
+                          className="text-[12px] font-medium px-2.5 py-1 rounded-full"
+                          style={{ background: '#FDF0F0', color: '#8B1A1A' }}
+                        >
+                          Revoked
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 pr-5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <a
+                          href={`/projects/${client.project_id}`}
+                          className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--color-surface-hover)]"
+                          style={{ color: 'var(--color-text-muted)' }}
+                          title="View project"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+
+                        {isAdmin && (
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenClientMenuId(
+                                  openClientMenuId === client.id
+                                    ? null
+                                    : client.id,
+                                )
+                              }
+                              className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
+                              style={{ color: 'var(--color-text-muted)' }}
+                            >
+                              <MoreHorizontal size={15} />
+                            </button>
+
+                            {openClientMenuId === client.id && (
+                              <div
+                                className="absolute right-0 top-full mt-1 w-[160px] rounded-xl border shadow-lg z-20 py-1 overflow-hidden"
+                                style={{
+                                  background: 'var(--color-surface)',
+                                  borderColor: 'var(--color-border)',
+                                }}
+                              >
+                                {client.status !== 'revoked' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setConfirmRevokeClient(client)
+                                      setOpenClientMenuId(null)
+                                    }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-[13px] hover:bg-[var(--color-danger-bg)] transition-colors"
+                                    style={{ color: 'var(--color-danger)' }}
+                                  >
+                                    <UserX size={13} />
+                                    Revoke access
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      void reinstateClientAction
+                                        .mutateAsync(client.id)
+                                        .then(() => {
+                                          toast.success(
+                                            `${client.full_name ?? 'Client'} reinstated`,
+                                          )
+                                        })
+                                        .catch((err) => {
+                                          toast.error(
+                                            err instanceof Error
+                                              ? err.message
+                                              : 'Failed to reinstate',
+                                          )
+                                        })
+                                      setOpenClientMenuId(null)
+                                    }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-[13px] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                    style={{ color: 'var(--color-success)' }}
+                                  >
+                                    <UserCheck size={13} />
+                                    Reinstate
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {inviteOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <div
@@ -756,6 +997,74 @@ export default function TeamPage() {
                   <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
                 )}
                 Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmRevokeClient && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[rgba(26,16,8,0.5)]"
+            onClick={() => setConfirmRevokeClient(null)}
+          />
+          <div
+            className="relative z-10 w-full max-w-[380px] rounded-2xl shadow-xl p-6 flex flex-col gap-4"
+            style={{ background: 'var(--color-surface)' }}
+          >
+            <h3
+              className="text-[16px] font-bold"
+              style={{ color: 'var(--color-text-heading)' }}
+            >
+              Revoke client access?
+            </h3>
+            <p
+              className="text-[13px]"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              <span
+                className="font-semibold"
+                style={{ color: 'var(--color-text-heading)' }}
+              >
+                {confirmRevokeClient.full_name}
+              </span>{' '}
+              will immediately lose access to the client portal. You can
+              reinstate them later.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setConfirmRevokeClient(null)}
+              >
+                Cancel
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  void revokeClientAction
+                    .mutateAsync(confirmRevokeClient.id)
+                    .then(() => {
+                      toast.success(
+                        `${confirmRevokeClient.full_name ?? 'Client'}'s access revoked`,
+                      )
+                      setConfirmRevokeClient(null)
+                    })
+                    .catch((err) => {
+                      toast.error(
+                        err instanceof Error
+                          ? err.message
+                          : 'Failed to revoke access',
+                      )
+                    })
+                }}
+                disabled={revokeClientAction.isPending}
+                className="h-[38px] px-4 rounded-lg text-[13px] font-semibold text-white bg-[var(--color-danger)] hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+              >
+                {revokeClientAction.isPending && (
+                  <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                )}
+                Revoke Access
               </button>
             </div>
           </div>

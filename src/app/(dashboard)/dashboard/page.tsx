@@ -12,6 +12,8 @@ import {
 } from '@/components/dashboard'
 import { getDashboardData } from '@/server/dashboard/dashboard.server'
 
+export const metadata = { title: 'Dashboard' }
+
 function getGreeting(): string {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'

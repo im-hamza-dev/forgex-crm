@@ -46,3 +46,6 @@ export { AuthCard } from './AuthCard'
 export { AuthWordmark } from './AuthWordmark'
 export { AuthDivider } from './AuthDivider'
 export { GoogleButton } from './GoogleButton'
+
+export { FileViewer } from './FileViewer'
+export type { ViewerFile } from './FileViewer'

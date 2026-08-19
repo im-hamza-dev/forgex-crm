@@ -8,12 +8,15 @@ import {
   FileDown,
   Trash2,
   Eye,
+  Pencil,
   Upload,
   FileText,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Avatar, Button, toast } from '@/components/ui'
+import { Avatar, Button, toast, FileViewer, type ViewerFile } from '@/components/ui'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -31,7 +34,7 @@ import {
   docToMarkdown,
 } from './RichDocEditor'
 import { ROUTES } from '@/constants/routes'
-import type { ClientDocument, DocumentType, ContentType } from '@/types/docs'
+import type { ClientDocument, ClientDocumentSend, DocumentType, ContentType } from '@/types/docs'
 
 const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = [
   { value: 'welcome', label: 'Welcome Letter' },
@@ -105,6 +108,8 @@ export function ClientDocEditor({ doc }: ClientDocEditorProps) {
   const [sendModalOpen, setSendModalOpen] = useState(false)
   const [selectedClients, setSelectedClients] = useState<string[]>([])
   const [isSending, setIsSending] = useState(false)
+  const [previewFile, setPreviewFile] = useState<ViewerFile | null>(null)
+  const [previewMode, setPreviewMode] = useState(false)
 
   const isSaving = createDoc.isPending || updateDoc.isPending
   const alreadySentIds = new Set(
@@ -234,6 +239,29 @@ export function ClientDocEditor({ doc }: ClientDocEditorProps) {
             </span>
           )}
           {canManage && (
+            <button
+              type="button"
+              onClick={() => setPreviewMode((v) => !v)}
+              className="flex items-center gap-1.5 h-[32px] px-3 rounded-lg text-[12px] font-medium border hover:bg-[var(--color-surface-hover)] transition-colors"
+              style={{
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-body)',
+              }}
+            >
+              {previewMode ? (
+                <>
+                  <Pencil size={13} />
+                  Edit
+                </>
+              ) : (
+                <>
+                  <Eye size={13} />
+                  Preview
+                </>
+              )}
+            </button>
+          )}
+          {canManage && (
             <Button
               variant="ghost"
               size="sm"
@@ -303,7 +331,41 @@ export function ClientDocEditor({ doc }: ClientDocEditorProps) {
                 {title || 'Untitled'}
               </h1>
             )}
-            {canManage && (
+            {previewMode ? (
+              <div className="docs-preview prose max-w-none px-1 py-4">
+                {contentType === 'pdf' && fileUrl ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <p
+                      className="text-[13px]"
+                      style={{ color: 'var(--color-text-muted)' }}
+                    >
+                      PDF document — preview not available in edit mode
+                    </p>
+                    <iframe
+                      src={fileUrl}
+                      className="w-full rounded-xl border"
+                      style={{
+                        height: '600px',
+                        borderColor: 'var(--color-border)',
+                      }}
+                      title="PDF Preview"
+                    />
+                  </div>
+                ) : body ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {docToMarkdown(body) === '__LEGACY_TIPTAP__'
+                      ? 'This document cannot be previewed.'
+                      : docToMarkdown(body) || '*No content yet*'}
+                  </ReactMarkdown>
+                ) : (
+                  <p style={{ color: 'var(--color-text-muted)' }}>
+                    No content yet.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+            {canManage && !currentDocId && (
               <div className="flex items-center gap-2 mb-6">
                 <button
                   type="button"
@@ -440,6 +502,8 @@ export function ClientDocEditor({ doc }: ClientDocEditorProps) {
                 )}
               </div>
             )}
+              </>
+            )}
           </div>
         </div>
 
@@ -480,48 +544,218 @@ export function ClientDocEditor({ doc }: ClientDocEditorProps) {
             </div>
 
             {doc?.sends && doc.sends.length > 0 && (
-              <div>
+              <div className="mt-6">
                 <p
-                  className="text-[10px] font-semibold uppercase tracking-[0.06em] mb-2"
+                  className="text-[10px] font-semibold uppercase tracking-[0.06em] mb-3"
                   style={{ color: 'var(--color-text-muted)' }}
                 >
                   Sent To ({doc.sends.length})
                 </p>
-                <div className="flex flex-col gap-1.5">
-                  {doc.sends.map((send) => (
-                    <div key={send.id} className="flex items-center gap-2">
-                      <Avatar
-                        name={send.client_account?.full_name ?? 'Client'}
-                        size="xs"
-                      />
-                      <div className="min-w-0">
+                <div className="flex flex-col gap-2">
+                  {doc.sends.map((send) => {
+                    const snapshot = send as ClientDocumentSend & {
+                      snapshot_body?: Record<string, unknown> | null
+                      snapshot_file_url?: string | null
+                      snapshot_source_file_url?: string | null
+                      snapshot_content_type?: string | null
+                      snapshot_title?: string | null
+                      client_account?: {
+                        full_name: string | null
+                        email: string
+                        company?: string | null
+                        project?: { name: string } | null
+                      } | null
+                    }
+                    const account = snapshot.client_account ?? null
+
+                    const hasChanged = (() => {
+                      if (snapshot.snapshot_content_type === 'pdf') {
+                        return (
+                          !!fileUrl &&
+                          fileUrl !== snapshot.snapshot_source_file_url
+                        )
+                      }
+                      return (
+                        JSON.stringify(body) !==
+                        JSON.stringify(snapshot.snapshot_body)
+                      )
+                    })()
+
+                    const handlePreview = () => {
+                      const snapshotContentType =
+                        snapshot.snapshot_content_type
+                      const snapshotFileUrl = snapshot.snapshot_file_url
+                      const snapshotBody = snapshot.snapshot_body ?? null
+                      const snapshotTitle =
+                        snapshot.snapshot_title ?? title
+
+                      if (
+                        snapshotContentType === 'pdf' &&
+                        snapshotFileUrl
+                      ) {
+                        setPreviewFile({
+                          id: send.id,
+                          name: snapshotTitle,
+                          url: snapshotFileUrl,
+                          mimeType: 'application/pdf',
+                        })
+                      } else if (snapshotBody) {
+                        let content = ''
+                        if (
+                          snapshotBody.type === 'markdown' &&
+                          typeof snapshotBody.body === 'string'
+                        ) {
+                          content = snapshotBody.body
+                        } else if (snapshotBody.type === 'doc') {
+                          content = JSON.stringify(snapshotBody)
+                        }
+                        setPreviewFile({
+                          id: send.id,
+                          name: snapshotTitle,
+                          url: '#',
+                          mimeType: 'text/markdown',
+                          docContent:
+                            content || '*No content in this snapshot*',
+                        })
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={send.id}
+                        className="rounded-xl border p-3"
+                        style={{
+                          borderColor: 'var(--color-border)',
+                          background: 'var(--color-surface-hover)',
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                            style={{ background: 'var(--color-accent)' }}
+                          >
+                            {(account?.full_name ?? account?.email ?? 'C')
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="text-[12px] font-semibold truncate"
+                              style={{ color: 'var(--color-text-heading)' }}
+                            >
+                              {account?.full_name ?? account?.email}
+                            </p>
+                            {account?.project?.name && (
+                              <p
+                                className="text-[11px] truncate"
+                                style={{ color: 'var(--color-text-muted)' }}
+                              >
+                                {account.project.name}
+                              </p>
+                            )}
+                          </div>
+                          {send.viewed_at ? (
+                            <span
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                              style={{
+                                background: '#EDF5ED',
+                                color: '#2D6A2D',
+                              }}
+                            >
+                              Viewed
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                              style={{
+                                background: '#FEF7E6',
+                                color: '#8B5E00',
+                              }}
+                            >
+                              Sent
+                            </span>
+                          )}
+                        </div>
+
                         <p
-                          className="text-[12px] font-medium truncate"
-                          style={{ color: 'var(--color-text-body)' }}
-                        >
-                          {send.client_account?.full_name}
-                        </p>
-                        <p
-                          className="text-[10px] truncate"
+                          className="text-[10px] mb-2"
                           style={{ color: 'var(--color-text-muted)' }}
                         >
-                          {send.client_account?.company ??
-                            send.client_account?.email}
+                          Sent{' '}
+                          {new Date(send.sent_at).toLocaleDateString(
+                            'en-US',
+                            {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            },
+                          )}
+                          {send.viewed_at && (
+                            <>
+                              {' · Viewed '}
+                              {new Date(send.viewed_at).toLocaleDateString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                },
+                              )}
+                            </>
+                          )}
                         </p>
-                      </div>
-                      {send.viewed_at && (
-                        <span
-                          className="text-[9px] shrink-0 px-1.5 py-0.5 rounded-full"
+
+                        {hasChanged && (
+                          <div
+                            className="text-[10px] mb-2 px-2 py-1.5 rounded-lg"
+                            style={{
+                              background: '#FEF7E6',
+                              color: '#8B5E00',
+                            }}
+                          >
+                            Document updated since sent
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={handlePreview}
+                          className="w-full h-[28px] rounded-lg text-[11px] font-medium border transition-colors hover:bg-[var(--color-surface)]"
                           style={{
-                            background: 'var(--color-success-bg)',
-                            color: 'var(--color-success)',
+                            borderColor: 'var(--color-border)',
+                            color: 'var(--color-text-secondary)',
                           }}
                         >
-                          Viewed
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                          Preview what client sees
+                        </button>
+
+                        {hasChanged && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void sendDoc
+                                .mutateAsync({
+                                  documentId: doc.id,
+                                  clientAccountIds: [send.client_account_id],
+                                })
+                                .then(() => {
+                                  toast.success(
+                                    'Updated version sent to client',
+                                  )
+                                })
+                                .catch(() => {
+                                  toast.error('Failed to resend')
+                                })
+                            }}
+                            disabled={sendDoc.isPending}
+                            className="w-full h-[28px] rounded-lg text-[11px] font-semibold mt-1.5 transition-colors hover:opacity-90 text-white"
+                            style={{ background: 'var(--color-accent)' }}
+                          >
+                            Resend updated version
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -699,6 +933,11 @@ export function ClientDocEditor({ doc }: ClientDocEditorProps) {
           </div>
         </div>
       )}
+
+      <FileViewer
+        file={previewFile}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   )
 }

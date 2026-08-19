@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Download, Eye, EyeOff, Trash2, X } from 'lucide-react'
+import { Download, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button, Modal, toast } from '@/components/ui'
+import { Button, FileViewer, Modal, toast, type ViewerFile } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -41,108 +41,6 @@ function getFileIcon(mimeType: string | null): string {
   return '📄'
 }
 
-function canPreview(mimeType: string | null): boolean {
-  if (!mimeType) return false
-  return mimeType === 'application/pdf' || mimeType.startsWith('image/')
-}
-
-function FilePreviewModal({
-  file,
-  onClose,
-}: {
-  file: ProjectFile
-  onClose: () => void
-}) {
-  const isPdf = file.mime_type === 'application/pdf'
-  const isImage = file.mime_type?.startsWith('image/') ?? false
-  const previewable = canPreview(file.mime_type)
-
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div
-        className={cn(
-          'relative z-10 flex flex-col',
-          'bg-[var(--color-surface)] rounded-2xl shadow-2xl',
-          'w-[90vw] max-w-[900px]',
-          isPdf ? 'h-[90vh]' : 'max-h-[90vh]',
-        )}
-      >
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-border)] shrink-0">
-          <span className="text-[18px]">{getFileIcon(file.mime_type)}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold truncate text-[var(--color-text-heading)]">
-              {file.file_name}
-            </p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              {formatBytes(file.file_size)} ·{' '}
-              {file.uploader?.full_name ?? 'Uploaded'}
-            </p>
-          </div>
-          <a
-            href={file.file_url}
-            download={file.file_name}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              'flex items-center gap-1.5 h-[34px] px-3 rounded-lg',
-              'text-[12px] font-medium border border-[var(--color-border)]',
-              'text-[var(--color-text-body)] hover:bg-[var(--color-surface-hover)]',
-              'transition-colors shrink-0',
-            )}
-          >
-            <Download size={13} />
-            Download
-          </a>
-          <button
-            type="button"
-            onClick={onClose}
-            className={cn(
-              'flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
-              'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
-              'transition-colors',
-            )}
-            aria-label="Close preview"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-auto min-h-0 rounded-b-2xl">
-          {isPdf && (
-            <iframe
-              src={`${file.file_url}#toolbar=1&navpanes=0`}
-              className="w-full h-full rounded-b-2xl"
-              title={file.file_name}
-            />
-          )}
-          {isImage && (
-            <div className="flex items-center justify-center p-6 h-full">
-              <img
-                src={file.file_url}
-                alt={file.file_name}
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
-            </div>
-          )}
-          {!previewable && (
-            <div className="flex flex-col items-center justify-center gap-4 py-16 px-6">
-              <span className="text-[48px]">{getFileIcon(file.mime_type)}</span>
-              <p className="text-[14px] font-semibold text-[var(--color-text-heading)]">
-                {file.file_name}
-              </p>
-              <p className="text-[13px] text-[var(--color-text-muted)] text-center">
-                This file type cannot be previewed in the browser. Download it
-                instead.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function ProjectFilesTab({ project }: { project: Project }) {
   const { profile } = useAuth()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -152,7 +50,7 @@ export function ProjectFilesTab({ project }: { project: Project }) {
   const deleteFile = useDeleteProjectFile()
 
   const [filter, setFilter] = useState<FileFilter>('all')
-  const [previewFile, setPreviewFile] = useState<ProjectFile | null>(null)
+  const [previewFile, setPreviewFile] = useState<ViewerFile | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
@@ -323,7 +221,20 @@ export function ProjectFilesTab({ project }: { project: Project }) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPreviewFile(file)}
+                    onClick={() =>
+                      setPreviewFile({
+                        id: file.id,
+                        name: file.file_name,
+                        url: file.file_url,
+                        mimeType: file.mime_type ?? 'application/octet-stream',
+                        size: file.file_size
+                          ? file.file_size > 1024 * 1024
+                            ? `${(file.file_size / (1024 * 1024)).toFixed(1)} MB`
+                            : `${Math.round(file.file_size / 1024)} KB`
+                          : undefined,
+                        uploadedBy: file.uploader?.full_name ?? undefined,
+                      })
+                    }
                     className="text-[13px] font-medium truncate mb-1 block w-full text-left hover:text-[var(--color-accent)] transition-colors"
                     style={{ color: 'var(--color-text-heading)' }}
                   >
@@ -412,12 +323,10 @@ export function ProjectFilesTab({ project }: { project: Project }) {
         )}
       </div>
 
-      {previewFile && (
-        <FilePreviewModal
-          file={previewFile}
-          onClose={() => setPreviewFile(null)}
-        />
-      )}
+      <FileViewer
+        file={previewFile}
+        onClose={() => setPreviewFile(null)}
+      />
 
       <Modal
         open={!!deleteId}

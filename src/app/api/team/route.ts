@@ -1,6 +1,10 @@
 import { ok } from '@/lib/api/responses'
 import { handleRouteError } from '@/server/shared/handle-route-error'
-import { getTeamMembers, getPendingInvites } from '@/server/team/team.server'
+import {
+  getTeamMembers,
+  getPendingInvites,
+  getClients,
+} from '@/server/team/team.server'
 
 export async function GET(request: Request) {
   try {
@@ -9,6 +13,11 @@ export async function GET(request: Request) {
 
     if (view === 'pending') {
       const data = await getPendingInvites()
+      return ok(data)
+    }
+
+    if (view === 'clients') {
+      const data = await getClients()
       return ok(data)
     }
 

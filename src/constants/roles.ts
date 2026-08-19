@@ -4,12 +4,13 @@ export const ROLES = {
   MEMBER: 'member',
 } as const
 
-export type TeamRole = (typeof ROLES)[keyof typeof ROLES]
+export type TeamRole = (typeof ROLES)[keyof typeof ROLES] | 'client'
 
 export const ROLE_LABELS: Record<TeamRole, string> = {
   admin: 'Admin',
   manager: 'Manager',
   member: 'Lead Generator',
+  client: 'Client',
 }
 
 export const INVITE_ROLE_OPTIONS: { value: TeamRole; label: string }[] = [
@@ -57,6 +58,20 @@ export const ROLE_PERMISSIONS = {
     canViewReports: false,
     canViewTeam: false,
     canViewSettings: true,
+    canInviteTeam: false,
+    canInviteClient: false,
+  },
+  client: {
+    canViewLeads: false,
+    canViewAllLeads: false,
+    canViewProjects: false,
+    canViewTasks: false,
+    canViewBlog: false,
+    canViewCalendar: false,
+    canViewDocs: false,
+    canViewReports: false,
+    canViewTeam: false,
+    canViewSettings: false,
     canInviteTeam: false,
     canInviteClient: false,
   },

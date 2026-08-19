@@ -8,6 +8,8 @@ import {
   SupabaseError,
   ValidationError,
 } from '@/server/shared/errors'
+import { createNotification } from '@/server/notifications/notifications.server'
+import { sendNotificationEmail, sendClientInviteEmail } from '@/lib/notifications/email'
 import type {
   ClientTicket,
   PaymentStatus,
@@ -533,21 +535,78 @@ export async function getTicketMessages(
 export async function replyToTicket(
   ticketId: string,
   content: string,
+  attachments?: {
+    name: string
+    url: string
+    size: number
+    mimeType: string
+  }[],
 ): Promise<TicketMessage> {
   const session = await requireRole(['admin', 'manager'])
-  if (!content.trim()) throw new ValidationError('Content is required')
+  if (!content.trim() && !(attachments && attachments.length > 0)) {
+    throw new ValidationError('Content is required')
+  }
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('client_ticket_messages')
     .insert({
       ticket_id: ticketId,
-      sender_type: 'team',
+      sender_type: 'team' as const,
       team_sender_id: session.user.id,
+      client_sender_id: null,
       content: content.trim(),
+      attachments: (attachments ?? []) as unknown as import('@/types/database.types').Json,
     })
     .select()
     .single()
   if (error) throw new SupabaseError(error.message)
+
+  const service = createServiceClient()
+  const { data: ticket } = await service
+    .from('client_tickets')
+    .select('subject, client_account_id, project_id')
+    .eq('id', ticketId)
+    .single()
+
+  if (ticket) {
+    const { data: account } = await service
+      .from('client_accounts')
+      .select('auth_user_id')
+      .eq('id', ticket.client_account_id)
+      .single()
+
+    if (account?.auth_user_id) {
+      void createNotification({
+        user_id: account.auth_user_id,
+        type: 'ticket_reply',
+        title: 'New reply on your request',
+        body: `Forgex Team replied to "${ticket.subject}"`,
+        reference_type: 'ticket',
+        reference_id: ticketId,
+        metadata: { ticket_subject: ticket.subject },
+      })
+
+      const { data: clientProfile } = await service
+        .from('profiles')
+        .select('email, full_name, updated_at')
+        .eq('id', account.auth_user_id)
+        .single()
+
+      if (clientProfile?.email) {
+        void sendNotificationEmail({
+          user_id: account.auth_user_id,
+          type: 'ticket_reply',
+          title: `Re: ${ticket.subject ?? 'Support request'}`,
+          body: content.trim(),
+          reference_type: 'ticket',
+          reference_id: ticketId,
+          actor_name: session.user.email ?? undefined,
+          metadata: { ticket_subject: ticket.subject ?? '' },
+        })
+      }
+    }
+  }
+
   return data as TicketMessage
 }
 
@@ -572,46 +631,138 @@ export async function updateTicketStatus(
     .select()
     .single()
   if (error) throw new SupabaseError(error.message)
+
+  if (status === 'resolved') {
+    const service = createServiceClient()
+    const { data: ticket } = await service
+      .from('client_tickets')
+      .select('subject, client_account_id')
+      .eq('id', id)
+      .single()
+
+    if (ticket) {
+      const { data: account } = await service
+        .from('client_accounts')
+        .select('auth_user_id')
+        .eq('id', ticket.client_account_id)
+        .single()
+
+      if (account?.auth_user_id) {
+        void createNotification({
+          user_id: account.auth_user_id,
+          type: 'ticket_reply',
+          title: 'Your request has been resolved',
+          body: `"${ticket.subject}" has been marked as resolved`,
+          reference_type: 'ticket',
+          reference_id: id,
+          metadata: { ticket_subject: ticket.subject },
+        })
+
+        void sendNotificationEmail({
+          user_id: account.auth_user_id,
+          type: 'ticket_reply',
+          title: `Your request has been resolved: ${ticket.subject}`,
+          body: `Your support request "${ticket.subject}" has been marked as resolved by the Forgex team.`,
+          reference_type: 'ticket',
+          reference_id: id,
+          metadata: { ticket_subject: ticket.subject ?? '' },
+        })
+      }
+    }
+  }
+
   return data as ClientTicket
 }
 
 export async function inviteClient(
   projectId: string,
-  data: { email: string; full_name: string; company?: string },
+  input: { email: string; full_name: string; company?: string },
 ) {
   const session = await requireRole(['admin', 'manager'])
-  const supabase = await createClient()
   const service = createServiceClient()
 
-  const { data: account, error } = await supabase
+  const { data: existing } = await service
+    .from('client_accounts')
+    .select('id, status')
+    .eq('project_id', projectId)
+    .in('status', ['pending', 'active'])
+    .limit(1)
+    .maybeSingle()
+
+  if (existing) {
+    if (existing.status === 'active') {
+      throw new ValidationError(
+        'This client already has active access to this project',
+      )
+    }
+    throw new ValidationError('An invite has already been sent to this email')
+  }
+
+  const { data: clientAccount, error: accountError } = await service
     .from('client_accounts')
     .insert({
       project_id: projectId,
-      email: data.email,
-      full_name: data.full_name,
-      company: data.company || null,
+      email: input.email,
+      full_name: input.full_name,
+      company: input.company ?? null,
       created_by: session.user.id,
       status: 'pending',
     })
-    .select()
+    .select('id')
     .single()
 
-  if (error) throw new SupabaseError(error.message)
+  if (accountError) throw new SupabaseError(accountError.message)
 
-  const { error: inviteError } = await service.auth.admin.inviteUserByEmail(
-    data.email,
-    {
-      data: {
-        full_name: data.full_name,
-        project_id: projectId,
-        is_client: true,
+  const { data: linkData, error: linkError } =
+    await service.auth.admin.generateLink({
+      type: 'invite',
+      email: input.email,
+      options: {
+        data: {
+          invited_role: 'client',
+          is_client: true,
+          full_name: input.full_name,
+          company: input.company ?? null,
+          project_id: projectId,
+        },
+        redirectTo: `${ENV.APP_URL}/portal/accept`,
       },
-      redirectTo: `${ENV.APP_URL}/portal/accept`,
-    },
-  )
+    })
 
-  if (inviteError) throw new SupabaseError(inviteError.message)
-  return account
+  if (linkError) {
+    await service.from('client_accounts').delete().eq('id', clientAccount.id)
+    throw new ValidationError(linkError.message)
+  }
+
+  if (linkData.user?.id) {
+    await service
+      .from('client_accounts')
+      .update({ auth_user_id: linkData.user.id })
+      .eq('id', clientAccount.id)
+  }
+
+  const { data: project } = await service
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .single()
+
+  void sendClientInviteEmail({
+    clientEmail: input.email,
+    clientName: input.full_name,
+    projectName: project?.name ?? 'your project',
+    company: input.company ?? null,
+    inviteUrl: linkData.properties.action_link,
+  }).catch((err) => {
+    console.error('[inviteClient] email send failed:', err)
+  })
+
+  await service
+    .from('projects')
+    .update({ client_account_id: clientAccount.id })
+    .eq('id', projectId)
+
+  return { success: true, clientAccountId: clientAccount.id }
 }
 
 export async function getProjectTasks(

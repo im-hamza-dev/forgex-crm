@@ -1,6 +1,7 @@
 {
-  "name": "forgex_crm",
-  "version": "0.1.0",
+  "name": "forgex-crm",
+  "version": "1.0.0",
+  "description": "Forgex Systems CRM — client relationship management platform",
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--max-http-header-size=32768 next dev",

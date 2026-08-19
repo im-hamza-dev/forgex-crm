@@ -21,7 +21,7 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
       <div className="flex flex-col">
         {items.map((item, i) => (
           <div
-            key={`${item.text}-${item.time}`}
+            key={`${item.text}-${item.time}-${i}`}
             className={cn(
               'flex items-start gap-2.5 py-3',
               i < items.length - 1 && 'border-b border-[var(--color-border)]',

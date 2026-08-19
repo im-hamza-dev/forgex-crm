@@ -2,13 +2,18 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchClient } from '@/lib/api/fetch-client'
-import type { TeamMember, PendingInvite } from '@/server/team/team.server'
+import type {
+  TeamMember,
+  PendingInvite,
+  ClientAccount,
+} from '@/server/team/team.server'
 
 type ApiData<T> = { data: T }
 
 const QUERY_KEY = {
   members: ['team', 'members'] as const,
   pending: ['team', 'pending'] as const,
+  clients: ['team', 'clients'] as const,
 }
 
 export function useTeamMembers() {
@@ -28,6 +33,19 @@ export function usePendingInvites() {
     queryFn: async () => {
       const res = await fetchClient<ApiData<PendingInvite[]>>(
         '/api/team?view=pending',
+      )
+      return res.data ?? []
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useClients() {
+  return useQuery({
+    queryKey: QUERY_KEY.clients,
+    queryFn: async () => {
+      const res = await fetchClient<ApiData<ClientAccount[]>>(
+        '/api/team?view=clients',
       )
       return res.data ?? []
     },
@@ -78,5 +96,23 @@ export function useTeamActions() {
     onSuccess: () => invalidate(),
   })
 
-  return { updateRole, deactivate, reactivate, cancelInvite }
+  const revokeClient = useMutation({
+    mutationFn: (id: string) =>
+      fetchClient(`/api/team/clients/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'revoke' }),
+      }),
+    onSuccess: () => invalidate(),
+  })
+
+  const reinstateClient = useMutation({
+    mutationFn: (id: string) =>
+      fetchClient(`/api/team/clients/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'reinstate' }),
+      }),
+    onSuccess: () => invalidate(),
+  })
+
+  return { updateRole, deactivate, reactivate, cancelInvite, revokeClient, reinstateClient }
 }

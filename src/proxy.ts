@@ -1,5 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { ROUTES } from '@/constants/routes'
 
 const PUBLIC_PATHS = [
@@ -7,143 +8,212 @@ const PUBLIC_PATHS = [
   '/forgot-password',
   '/reset-password',
   '/accept-invite',
-  '/setup',
-  '/api/auth',
   '/portal/accept',
-]
-
-const PROTECTED_ROUTES = [
-  { path: '/projects',         permission: 'canViewProjects' },
-  { path: '/blog',             permission: 'canViewBlog'     },
-  { path: '/content-calendar', permission: 'canViewCalendar' },
-  { path: '/reports',          permission: 'canViewReports'  },
-  { path: '/team',             permission: 'canViewTeam'     },
+  '/api/auth',
+  '/manifest.json',
+  '/portal/manifest.webmanifest',
+  '/sw.js',
 ]
 
 const ROLE_MAP: Record<string, Record<string, boolean>> = {
   admin: {
+    canViewLeads: true,
+    canViewAllLeads: true,
     canViewProjects: true,
+    canViewTasks: true,
     canViewBlog: true,
     canViewCalendar: true,
+    canViewDocs: true,
     canViewReports: true,
     canViewTeam: true,
+    canViewSettings: true,
   },
   manager: {
+    canViewLeads: true,
+    canViewAllLeads: true,
     canViewProjects: true,
+    canViewTasks: true,
     canViewBlog: true,
     canViewCalendar: true,
+    canViewDocs: true,
     canViewReports: false,
     canViewTeam: false,
+    canViewSettings: true,
   },
   member: {
+    canViewLeads: true,
+    canViewAllLeads: false,
     canViewProjects: false,
+    canViewTasks: true,
     canViewBlog: false,
     canViewCalendar: false,
+    canViewDocs: true,
     canViewReports: false,
     canViewTeam: false,
+    canViewSettings: true,
   },
 }
 
-export async function proxy(request: NextRequest) {
-  const { supabaseResponse, user, supabase } = await updateSession(request)
+const ROUTE_PERMISSION_MAP: Record<string, keyof (typeof ROLE_MAP)[string]> = {
+  '/leads': 'canViewLeads',
+  '/projects': 'canViewProjects',
+  '/tasks': 'canViewTasks',
+  '/blog': 'canViewBlog',
+  '/content-calendar': 'canViewCalendar',
+  '/docs': 'canViewDocs',
+  '/reports': 'canViewReports',
+  '/team': 'canViewTeam',
+  '/settings': 'canViewSettings',
+  '/dashboard': 'canViewLeads',
+  '/notifications': 'canViewLeads',
+}
+
+function loginErrorUrl(request: NextRequest, error: string) {
+  const url = request.nextUrl.clone()
+  url.pathname = ROUTES.LOGIN
+  url.search = ''
+  url.searchParams.set('error', error)
+  return url
+}
+
+function redirectWithCookies(url: URL, source: NextResponse) {
+  const redirect = NextResponse.redirect(url)
+  source.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie.name, cookie.value)
+  })
+  return redirect
+}
+
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
+  const url = request.nextUrl.clone()
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
-  const isApi    = pathname.startsWith('/api/')
-  const isPortal = pathname.startsWith('/portal/')
+  const isPublic = PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  )
+  if (isPublic) return NextResponse.next()
 
-  if (isApi) return supabaseResponse
+  let response = NextResponse.next({ request })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          )
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          )
+        },
+      },
+    },
+  )
 
-  if (user && pathname === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  // Block /setup if any admin profile already exists
-  if (pathname === '/setup') {
-    const { data: existingAdmin } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'admin')
-      .limit(1)
-      .maybeSingle()
-
-    if (existingAdmin) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+  if (!session) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    return supabaseResponse
-  }
-
-  if (isPublic) return supabaseResponse
-
-  if (!user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('redirectTo', pathname)
+    url.pathname = ROUTES.LOGIN
     return NextResponse.redirect(url)
   }
 
-  if (isPortal) return supabaseResponse
-
-  // Query profile — no recursion since we use service role pattern
-  const { data: profile, error: profileError } = await supabase
+  const service = createServiceClient()
+  const { data: profile } = await service
     .from('profiles')
     .select('role, is_active')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .maybeSingle()
-
-  if (profileError) {
-    // On RLS or DB error — sign out and redirect to be safe
-    console.error('[proxy] Profile query error:', profileError.message)
-    await supabase.auth.signOut()
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('error', 'not_invited')
-    return NextResponse.redirect(url)
-  }
 
   if (!profile) {
     await supabase.auth.signOut()
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('error', 'not_invited')
-    return NextResponse.redirect(url)
+    return redirectWithCookies(loginErrorUrl(request, 'not_invited'), response)
   }
 
-  if (profile.is_active === false) {
+  if (!profile.is_active) {
     await supabase.auth.signOut()
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('error', 'account_inactive')
+    return redirectWithCookies(
+      loginErrorUrl(request, 'account_inactive'),
+      response,
+    )
+  }
+
+  const role = profile.role as string
+  const isPortal = pathname === '/portal' || pathname.startsWith('/portal/')
+
+  if (role === 'client') {
+    if (
+      isPortal ||
+      pathname.startsWith('/api/portal/') ||
+      pathname.startsWith('/api/auth') ||
+      pathname.startsWith('/api/notifications')
+    ) {
+      if (isPortal) {
+        const { data: clientAccount } = await service
+          .from('client_accounts')
+          .select('project_id, status')
+          .eq('auth_user_id', session.user.id)
+          .maybeSingle()
+
+        if (!clientAccount) {
+          await supabase.auth.signOut()
+          return redirectWithCookies(
+            loginErrorUrl(request, 'not_invited'),
+            response,
+          )
+        }
+
+        if (clientAccount.status === 'revoked') {
+          await supabase.auth.signOut()
+          return redirectWithCookies(
+            loginErrorUrl(request, 'access_revoked'),
+            response,
+          )
+        }
+
+        if (pathname === '/portal' || pathname === '/portal/') {
+          url.pathname = `/portal/${clientAccount.project_id}`
+          return redirectWithCookies(url, response)
+        }
+      }
+
+      return response
+    }
+
+    url.pathname = '/portal'
     return NextResponse.redirect(url)
   }
 
-  const role = (profile.role as string) ?? 'member'
-
-  // Block client portal users from CRM routes
-  if ((profile.role as string) === 'client' || !Object.keys(ROLE_MAP).includes(role)) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
+  if (isPortal) {
+    url.pathname = ROUTES.DASHBOARD
     return NextResponse.redirect(url)
   }
 
-  const permissions = ROLE_MAP[role] ?? ROLE_MAP.member!
+  if (pathname.startsWith('/api/')) {
+    return response
+  }
 
-  const protectedRoute = PROTECTED_ROUTES.find((r) =>
-    pathname.startsWith(r.path),
+  const matchedRoute = Object.keys(ROUTE_PERMISSION_MAP).find(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
   )
 
-  if (protectedRoute && !permissions[protectedRoute.permission]) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  if (matchedRoute) {
+    const permission = ROUTE_PERMISSION_MAP[matchedRoute]!
+    const permissions = ROLE_MAP[role] ?? ROLE_MAP.member!
+    if (!permissions[permission]) {
+      url.pathname = ROUTES.DASHBOARD
+      return NextResponse.redirect(url)
+    }
   }
 
-  return supabaseResponse
+  return response
 }
 
 export const config = {

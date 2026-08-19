@@ -12,6 +12,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ROUTES } from '@/constants/routes'
 
+export const metadata = { title: 'Reports' }
+
 interface ReportsPageProps {
   searchParams: Promise<{ range?: string }>
 }

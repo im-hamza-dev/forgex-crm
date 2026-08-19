@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, type ChangeEvent } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { Paperclip, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button, Select, toast } from '@/components/ui'
+import { Button, Select, toast, FileViewer, type ViewerFile } from '@/components/ui'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import {
   useProjectTickets,
@@ -55,17 +57,79 @@ function TicketThread({
   const reply = useReplyToTicket()
   const updateStatus = useUpdateTicketStatus()
   const [content, setContent] = useState('')
+  const [replyAttachments, setReplyAttachments] = useState<{
+    name: string
+    url: string
+    size: number
+    mimeType: string
+    uploading?: boolean
+    localFile?: File
+  }[]>([])
+  const [viewingFile, setViewingFile] = useState<ViewerFile | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    const supabase = createClient()
+
+    for (const file of files) {
+      setReplyAttachments((prev) => [
+        ...prev,
+        {
+          name: file.name,
+          url: '',
+          size: file.size,
+          mimeType: file.type,
+          localFile: file,
+          uploading: true,
+        },
+      ])
+      const path = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`
+      const { error } = await supabase.storage
+        .from('ticket-attachments')
+        .upload(path, file)
+      if (!error) {
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('ticket-attachments').getPublicUrl(path)
+        setReplyAttachments((prev) =>
+          prev.map((a) =>
+            a.localFile === file
+              ? {
+                  name: file.name,
+                  url: publicUrl,
+                  size: file.size,
+                  mimeType: file.type,
+                }
+              : a,
+          ),
+        )
+      } else {
+        setReplyAttachments((prev) => prev.filter((a) => a.localFile !== file))
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const handleReply = async () => {
-    if (!content.trim()) return
+    if (!content.trim() && !replyAttachments.length) return
+    if (replyAttachments.some((a) => a.uploading)) return
     try {
       await reply.mutateAsync({
         projectId,
         ticketId: ticket.id,
         content: content.trim(),
+        attachments: replyAttachments.map((a) => ({
+          name: a.name,
+          url: a.url,
+          size: a.size,
+          mimeType: a.mimeType,
+        })),
       })
       toast.success('Reply sent')
       setContent('')
+      setReplyAttachments([])
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send reply')
     }
@@ -161,6 +225,60 @@ function TicketThread({
               >
                 {msg.content}
               </p>
+              {((
+                msg as typeof msg & {
+                  attachments?: {
+                    name: string
+                    url: string
+                    size: number
+                    mimeType: string
+                  }[]
+                }
+              ).attachments?.length ?? 0) > 0 && (
+                <div
+                  className="flex flex-col gap-1 mt-1.5 pt-1.5"
+                  style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}
+                >
+                  {(
+                    (
+                      msg as typeof msg & {
+                        attachments?: {
+                          name: string
+                          url: string
+                          size: number
+                          mimeType: string
+                        }[]
+                      }
+                    ).attachments ?? []
+                  ).map((att, attIndex) => (
+                    <button
+                      key={`${msg.id}-${attIndex}`}
+                      type="button"
+                      onClick={() =>
+                        setViewingFile({
+                          id: `${msg.id}-${attIndex}`,
+                          name: att.name,
+                          url: att.url,
+                          mimeType: att.mimeType,
+                          size: `${Math.round(att.size / 1024)} KB`,
+                        })
+                      }
+                      className="flex items-center gap-1.5 hover:opacity-70 transition-opacity text-left"
+                    >
+                      <Paperclip
+                        size={11}
+                        style={{ color: 'var(--color-accent)' }}
+                      />
+                      <span
+                        className="text-[11px] underline"
+                        style={{ color: 'var(--color-accent)' }}
+                      >
+                        {att.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
@@ -187,18 +305,66 @@ function TicketThread({
             color: 'var(--color-text-body)',
           }}
         />
-        <div className="flex justify-end">
+        {replyAttachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {replyAttachments.map((file, i) => (
+              <div
+                key={`${file.name}-${i}`}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px]"
+                style={{
+                  background: 'var(--color-surface-hover)',
+                  color: 'var(--color-text-body)',
+                }}
+              >
+                <Paperclip size={10} />
+                <span className="max-w-[120px] truncate">{file.name}</span>
+                {file.uploading ? (
+                  <span className="w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] border-t-transparent animate-spin" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReplyAttachments((p) => p.filter((_, j) => j !== i))
+                    }
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 text-[12px] hover:opacity-70"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            <Paperclip size={13} /> Attach
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => void handleFileSelect(e)}
+          />
           <Button
             variant="primary"
             size="sm"
-            disabled={!content.trim()}
-            loading={reply.isPending}
             onClick={() => void handleReply()}
+            loading={reply.isPending}
+            disabled={
+              (!content.trim() && !replyAttachments.length) ||
+              replyAttachments.some((a) => a.uploading)
+            }
           >
             Send Reply
           </Button>
         </div>
       </div>
+      <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />
     </div>
   )
 }

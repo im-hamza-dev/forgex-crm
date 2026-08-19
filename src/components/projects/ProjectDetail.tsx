@@ -67,6 +67,9 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
   const canEdit = canEditProject(profile)
   const canInvite = canInviteClient(profile)
   const canDelete = canDeleteProject(profile)
+  const clientAccount = project.client_account
+  const showInviteButton =
+    canInvite && (!clientAccount || clientAccount.status === 'revoked')
 
   const handleDelete = async () => {
     try {
@@ -142,7 +145,7 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
               Edit
             </button>
           )}
-          {canInvite && (
+          {showInviteButton ? (
             <button
               type="button"
               onClick={() => setInviteOpen(true)}
@@ -157,7 +160,24 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
             >
               Invite Client
             </button>
-          )}
+          ) : canInvite && clientAccount ? (
+            <div
+              className="flex items-center gap-2 h-[34px] px-3 rounded-lg border text-[13px]"
+              style={{
+                borderColor: 'var(--color-border)',
+                color:
+                  clientAccount.status === 'active'
+                    ? 'var(--color-success)'
+                    : 'var(--color-text-muted)',
+              }}
+            >
+              {clientAccount.status === 'active' ? (
+                <>✓ Client connected</>
+              ) : (
+                <>⏳ Invite pending</>
+              )}
+            </div>
+          ) : null}
           {canDelete && (
             <div className="relative">
               <button

@@ -38,6 +38,8 @@ export function useProject(id: string | null) {
   return useQuery({
     queryKey: queryKeys.projects.detail(id ?? ''),
     enabled: Boolean(id),
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
     queryFn: async () => {
       const res = await fetchClient<ApiData<Project>>(
         ROUTES.API.PROJECT(id!),
@@ -426,14 +428,24 @@ export function useReplyToTicket() {
       projectId,
       ticketId,
       content,
+      attachments,
     }: {
       projectId: string
       ticketId: string
       content: string
+      attachments?: {
+        name: string
+        url: string
+        size: number
+        mimeType: string
+      }[]
     }) => {
       const res = await fetchClient<ApiData<TicketMessage>>(
         projectPath(projectId, `/tickets/${ticketId}`),
-        { method: 'POST', body: JSON.stringify({ content }) },
+        {
+          method: 'POST',
+          body: JSON.stringify({ content, attachments }),
+        },
       )
       return res.data
     },

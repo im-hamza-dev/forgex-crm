@@ -5,7 +5,11 @@ import {
   getProjectUpdates,
   createProjectUpdate,
 } from '@/server/projects/projects.server'
-import { createNotificationForMany } from '@/server/notifications/notifications.server'
+import {
+  createNotification,
+  createNotificationForMany,
+} from '@/server/notifications/notifications.server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 const createSchema = z.object({
   content: z.string().min(1),
@@ -36,16 +40,17 @@ export async function POST(
     if (!parsed.success) {
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
+
     const data = await createProjectUpdate(id, parsed.data)
-    const { createServiceClient } = await import('@/lib/supabase/service')
     const service = createServiceClient()
+
+    // Notify project members (team)
     const { data: members } = await service
       .from('project_members')
       .select('user_id')
       .eq('project_id', id)
 
     const memberIds = (members ?? []).map((m) => m.user_id)
-
     if (memberIds.length > 0) {
       void createNotificationForMany(memberIds, {
         type: 'project_updated',
@@ -58,6 +63,29 @@ export async function POST(
         metadata: {},
       })
     }
+
+    // Notify client if update is client-visible
+    if (parsed.data.is_client_visible) {
+      const { data: account } = await service
+        .from('client_accounts')
+        .select('auth_user_id')
+        .eq('project_id', id)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (account?.auth_user_id) {
+        void createNotification({
+          user_id: account.auth_user_id,
+          type: 'project_updated',
+          title: 'New project update',
+          body: `The Forgex team posted a new project update`,
+          reference_type: 'project',
+          reference_id: id,
+          metadata: {},
+        })
+      }
+    }
+
     return created(data)
   } catch (error) {
     return handleRouteError(error)

@@ -8,6 +8,8 @@ import {
   NotFoundError,
   SupabaseError,
 } from '@/server/shared/errors'
+import { createNotification } from '@/server/notifications/notifications.server'
+import { sendNotificationEmail } from '@/lib/notifications/email'
 import type { Json } from '@/types/database.types'
 import type {
   ClientDocument,
@@ -322,11 +324,24 @@ export async function getClientDocument(id: string) {
     .from('client_document_sends' as never)
     .select(
       `
-      *,
-      client_account:client_accounts(full_name, company, email)
+      id,
+      document_id,
+      client_account_id,
+      sent_at,
+      viewed_at,
+      snapshot_body,
+      snapshot_file_url,
+      snapshot_source_file_url,
+      snapshot_content_type,
+      snapshot_title,
+      client_account:client_accounts(
+        id, full_name, company, email, project_id,
+        project:projects!client_accounts_project_id_fkey(name)
+      )
     `,
     )
     .eq('document_id', id)
+    .order('sent_at', { ascending: false })
 
   const profiles = await fetchProfiles([row.created_by])
   return mapClientDoc(
@@ -428,22 +443,124 @@ export async function sendDocumentToClient(
   documentId: string,
   clientAccountIds: string[],
 ) {
-  const session = await requireRole(['admin'])
-  const supabase = await createClient()
+  const session = await requireRole(['admin', 'manager'])
+  const service = createServiceClient()
 
-  const inserts = clientAccountIds.map((clientId) => ({
-    document_id: documentId,
-    client_account_id: clientId,
-    sent_by: session.user.id,
-  }))
+  const { data: doc, error: docError } = await service
+    .from('client_documents' as never)
+    .select('id, title, body, file_url, file_name, content_type')
+    .eq('id', documentId)
+    .single()
 
-  const { data, error } = await supabase
-    .from('client_document_sends' as never)
-    .upsert(inserts as never, { onConflict: 'document_id,client_account_id' })
-    .select()
+  if (docError || !doc) throw new NotFoundError('Document not found')
 
-  if (error) throw new SupabaseError(error.message)
-  return data
+  const document = doc as unknown as {
+    id: string
+    title: string
+    body: Json | null
+    file_url: string | null
+    file_name: string | null
+    content_type: string
+  }
+
+  const results: { id: string }[] = []
+
+  for (const clientAccountId of clientAccountIds) {
+    let snapshotFileUrl: string | null = null
+    const sendId = crypto.randomUUID()
+
+    if (document.content_type === 'pdf' && document.file_url) {
+      try {
+        const fileResponse = await fetch(document.file_url)
+        if (fileResponse.ok) {
+          const fileBuffer = await fileResponse.arrayBuffer()
+          const fileName = document.file_name ?? `document-${sendId}.pdf`
+          const sendPath = `${sendId}/${fileName}`
+
+          const { error: uploadError } = await service.storage
+            .from('client-document-sends')
+            .upload(sendPath, fileBuffer, {
+              contentType: 'application/pdf',
+              upsert: false,
+            })
+
+          if (!uploadError) {
+            const {
+              data: { publicUrl },
+            } = service.storage
+              .from('client-document-sends')
+              .getPublicUrl(sendPath)
+            snapshotFileUrl = publicUrl
+          }
+        }
+      } catch (err) {
+        console.error('[sendDocumentToClient] PDF copy failed:', err)
+      }
+      if (!snapshotFileUrl) snapshotFileUrl = document.file_url
+    }
+
+    const { data: sendData, error: sendError } = await service
+      .from('client_document_sends' as never)
+      .upsert(
+        {
+          document_id: documentId,
+          client_account_id: clientAccountId,
+          sent_by: session.user.id,
+          sent_at: new Date().toISOString(),
+          viewed_at: null,
+          snapshot_body:
+            document.content_type === 'editor' ? document.body : null,
+          snapshot_file_url:
+            document.content_type === 'pdf' ? snapshotFileUrl : null,
+          snapshot_source_file_url: document.file_url,
+          snapshot_content_type: document.content_type,
+          snapshot_title: document.title,
+        } as never,
+        {
+          onConflict: 'document_id,client_account_id',
+          ignoreDuplicates: false,
+        },
+      )
+      .select('id')
+      .single()
+
+    if (sendError || !sendData) {
+      console.error('[sendDocumentToClient] send error:', sendError)
+      continue
+    }
+
+    results.push(sendData as { id: string })
+
+    const { data: account } = await service
+      .from('client_accounts')
+      .select('auth_user_id, full_name')
+      .eq('id', clientAccountId)
+      .single()
+
+    if (account?.auth_user_id) {
+      void createNotification({
+        user_id: account.auth_user_id,
+        type: 'client_doc_sent',
+        title: 'New document shared with you',
+        body: `"${document.title}" has been shared with you`,
+        reference_type: 'client_document',
+        reference_id: documentId,
+        metadata: { document_title: document.title },
+      })
+
+      void sendNotificationEmail({
+        user_id: account.auth_user_id,
+        type: 'client_doc_sent',
+        title: `New document from Forgex: ${document.title}`,
+        body: `"${document.title}" has been shared with you. Open your portal to view it.`,
+        reference_type: 'client_document',
+        reference_id: documentId,
+        metadata: { document_title: document.title },
+      })
+    }
+  }
+
+  return results
 }
 
 export async function getClientAccounts() {

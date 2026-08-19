@@ -70,6 +70,15 @@ export function useAuth() {
     startAuthListener()
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    const supabase = createClient()
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser()
+    if (!currentUser) return
+    await loadProfile(currentUser.id)
+  }, [])
+
   const signOut = useCallback(async () => {
     try {
       await fetch('/api/auth/signout', { method: 'POST' })
@@ -81,5 +90,5 @@ export function useAuth() {
     }
   }, [])
 
-  return { user, profile, isLoading, signOut }
+  return { user, profile, isLoading, signOut, refreshProfile }
 }

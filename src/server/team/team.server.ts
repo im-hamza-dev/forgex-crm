@@ -55,6 +55,8 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
 
   return ((data ?? []) as ProfileRow[])
     .filter((p) => {
+      // Never show client role in team management
+      if (p.role === 'client') return false
       const authUser = authMap.get(p.id)
       if (!authUser) return true
       return Boolean(authUser.confirmed_at) || !authUser.invited_at
@@ -80,7 +82,12 @@ export async function getPendingInvites(): Promise<PendingInvite[]> {
   if (error) throw new Error(error.message)
 
   return (data.users ?? [])
-    .filter((u) => Boolean(u.invited_at) && !u.confirmed_at)
+    .filter((u) => {
+      if (!u.invited_at || u.confirmed_at) return false
+      // Exclude client invites — they appear in project management, not team
+      if (u.user_metadata?.invited_role === 'client') return false
+      return true
+    })
     .map((u) => {
       const metadata = u.user_metadata as Record<string, unknown> | undefined
       const fullName =
@@ -178,4 +185,111 @@ export async function cancelInvite(userId: string): Promise<void> {
   const service = createServiceClient()
   const { error } = await service.auth.admin.deleteUser(userId)
   if (error) throw new Error(error.message)
+}
+
+export interface ClientAccount {
+  id: string
+  full_name: string | null
+  company: string | null
+  email: string
+  status: 'pending' | 'active' | 'revoked'
+  project_id: string
+  project_name: string | null
+  created_at: string
+}
+
+function embeddedProjectName(project: unknown): string | null {
+  if (!project) return null
+  const row = Array.isArray(project) ? project[0] : project
+  if (row && typeof row === 'object' && 'name' in row) {
+    const name = (row as { name?: unknown }).name
+    return typeof name === 'string' ? name : null
+  }
+  return null
+}
+
+export async function getClients(): Promise<ClientAccount[]> {
+  await requireRole(['admin', 'manager'])
+  const service = createServiceClient()
+
+  const { data, error } = await service
+    .from('client_accounts')
+    .select(
+      `
+      id,
+      full_name,
+      company,
+      email,
+      status,
+      project_id,
+      created_at,
+      project:projects!client_accounts_project_id_fkey(name)
+    `,
+    )
+    .order('created_at', { ascending: false })
+
+  if (error) throw new SupabaseError(error.message)
+
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    full_name: c.full_name,
+    company: c.company,
+    email: c.email,
+    status: c.status as 'pending' | 'active' | 'revoked',
+    project_id: c.project_id,
+    project_name: embeddedProjectName(c.project),
+    created_at: c.created_at,
+  }))
+}
+
+export async function revokeClient(clientAccountId: string): Promise<void> {
+  await requireRole(['admin'])
+  const service = createServiceClient()
+
+  const { data: account, error: lookupError } = await service
+    .from('client_accounts')
+    .select('auth_user_id')
+    .eq('id', clientAccountId)
+    .single()
+
+  if (lookupError) throw new SupabaseError(lookupError.message)
+
+  const { error } = await service
+    .from('client_accounts')
+    .update({ status: 'revoked' })
+    .eq('id', clientAccountId)
+
+  if (error) throw new SupabaseError(error.message)
+
+  if (account?.auth_user_id) {
+    await service.auth.admin.updateUserById(account.auth_user_id, {
+      ban_duration: '876600h',
+    })
+  }
+}
+
+export async function reinstateClient(clientAccountId: string): Promise<void> {
+  await requireRole(['admin'])
+  const service = createServiceClient()
+
+  const { data: account, error: lookupError } = await service
+    .from('client_accounts')
+    .select('auth_user_id')
+    .eq('id', clientAccountId)
+    .single()
+
+  if (lookupError) throw new SupabaseError(lookupError.message)
+
+  const { error } = await service
+    .from('client_accounts')
+    .update({ status: 'active' })
+    .eq('id', clientAccountId)
+
+  if (error) throw new SupabaseError(error.message)
+
+  if (account?.auth_user_id) {
+    await service.auth.admin.updateUserById(account.auth_user_id, {
+      ban_duration: 'none',
+    })
+  }
 }

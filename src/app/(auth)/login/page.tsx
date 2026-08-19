@@ -187,6 +187,10 @@ function LoginForm() {
   let errorMessage: string | null = null
   if (errorParam === 'not_invited') {
     errorMessage = 'This account has not been invited. Contact your administrator.'
+  } else if (errorParam === 'access_revoked') {
+    errorMessage = 'Your portal access has been revoked. Contact Forgex for help.'
+  } else if (errorParam === 'account_inactive') {
+    errorMessage = 'This account is inactive. Contact your administrator.'
   }
 
   const [showPassword, setShowPassword] = useState(false)
@@ -194,6 +198,15 @@ function LoginForm() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hovered, setHovered] = useState(false)
+  const [isDesktopHover, setIsDesktopHover] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px) and (hover: hover)')
+    const update = () => setIsDesktopHover(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   const {
     register,
@@ -255,35 +268,38 @@ function LoginForm() {
         }}
       />
 
-      {/* Canvas fills full viewport */}
-      <LetterCanvas hovered={hovered} />
+      {isDesktopHover && <LetterCanvas hovered={hovered} />}
 
-      {/* Hint */}
+      {isDesktopHover && (
       <span
         className="fixed bottom-4 left-1/2 -translate-x-1/2 z-10 text-[11px] tracking-[0.04em] pointer-events-none whitespace-nowrap transition-opacity duration-500"
         style={{ color: '#b5a890', opacity: hovered ? 0 : 1 }}
       >
         hover to read · move away to scatter
       </span>
+      )}
 
       {/* Full viewport hover detector + card centering */}
       <div
-        className="fixed inset-0 z-10 flex items-center justify-center"
-        onMouseEnter={() => setHovered(true)}
+        className="fixed inset-0 z-10 flex items-center justify-center p-4"
+        onMouseEnter={() => {
+          if (isDesktopHover) setHovered(true)
+        }}
         onMouseLeave={() => setHovered(false)}
       >
-        {/* Card slides right on hover */}
+        {/* Card slides right on hover (desktop only) */}
         <div
-          className="w-[340px] rounded-[22px] transition-transform duration-700 will-change-transform"
+          className="w-full max-w-[340px] rounded-[22px] transition-transform duration-700 will-change-transform"
           style={{
-            padding: '34px 30px 28px',
+            padding: '28px 22px 24px',
             background: '#fff',
             boxShadow:
               '0 2px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.09),0 24px 64px rgba(0,0,0,0.10)',
             border: '1px solid rgba(255,255,255,0.8)',
-            transform: hovered
-              ? 'translateX(clamp(100px, calc(50vw - 450px), 240px))'
-              : 'translateX(0)',
+            transform:
+              isDesktopHover && hovered
+                ? 'translateX(clamp(100px, calc(50vw - 450px), 240px))'
+                : 'translateX(0)',
           }}
         >
           <AuthWordmark />

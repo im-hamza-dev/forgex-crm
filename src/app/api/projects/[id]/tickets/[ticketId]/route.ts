@@ -8,7 +8,17 @@ import {
 } from '@/server/projects/projects.server'
 
 const replySchema = z.object({
-  content: z.string().min(1),
+  content: z.string(),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string(),
+        size: z.number(),
+        mimeType: z.string(),
+      }),
+    )
+    .optional(),
 })
 
 const statusSchema = z.object({
@@ -39,7 +49,11 @@ export async function POST(
     if (!parsed.success) {
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
-    const data = await replyToTicket(ticketId, parsed.data.content)
+    const data = await replyToTicket(
+      ticketId,
+      parsed.data.content,
+      parsed.data.attachments,
+    )
     return created(data)
   } catch (error) {
     return handleRouteError(error)
