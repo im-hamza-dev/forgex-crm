@@ -1,0 +1,6 @@
+export { VideosTable } from './VideosTable'
+export { VideoCard } from './VideoCard'
+export { VideoActions } from './VideoActions'
+export { VideoVisibilityBadge } from './VideoVisibilityBadge'
+export { NewVideoModal } from './NewVideoModal'
+export { EditVideoModal } from './EditVideoModal'
