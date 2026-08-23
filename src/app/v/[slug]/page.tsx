@@ -45,35 +45,38 @@ export default async function PublicVideoPage({ params }: PageProps) {
   if (!video) notFound()
 
   return (
-    <main className="min-h-screen bg-[var(--color-page)] py-10 sm:py-16 flex flex-col items-center">
-      <div className="w-[80vw]">
-        <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-black shadow-[0_16px_48px_rgba(26,16,8,0.16)]">
-          <video
-            controls
-            playsInline
-            preload="metadata"
-            poster={buildPosterDataUri(video.title, video.description)}
-            src={video.signedUrl}
-            className="block w-full aspect-video bg-black"
-          >
-            Your browser cannot play this video.
-          </video>
-        </div>
-
-        <div className="mt-6">
-          <h1 className="text-[24px] font-bold leading-tight text-[var(--color-text-heading)]">
+    <main className="min-h-screen bg-[var(--color-page)] px-4 py-8 sm:px-6 sm:py-12 lg:px-10 lg:py-16">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+        {/* Title / description — full width on mobile, 30% on desktop */}
+        <aside className="order-2 flex w-full flex-col lg:order-1 lg:w-[30%] lg:shrink-0">
+          <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+            Forgex Systems
+          </p>
+          <h1 className="text-[22px] font-bold leading-tight text-[var(--color-text-heading)] sm:text-[26px] lg:text-[28px]">
             {video.title}
           </h1>
           {video.description && (
-            <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-[var(--color-text-secondary)]">
+            <p className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-[var(--color-text-secondary)] sm:text-[15px]">
               {video.description}
             </p>
           )}
-        </div>
+        </aside>
 
-        <p className="mt-10 text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-          Forgex Systems
-        </p>
+        {/* Player — full width on mobile, 70% on desktop */}
+        <div className="order-1 w-full lg:order-2 lg:w-[70%] lg:min-w-0">
+          <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-black shadow-[0_16px_48px_rgba(26,16,8,0.16)]">
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              poster={buildPosterDataUri(video.title, video.description)}
+              src={video.signedUrl}
+              className="block aspect-video w-full bg-black"
+            >
+              Your browser cannot play this video.
+            </video>
+          </div>
+        </div>
       </div>
     </main>
   )
