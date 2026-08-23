@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { VIDEOS_BUCKET } from '@/constants/videos'
 import { requireRole } from '@/server/shared/require-session'
 import {
   NotFoundError,
@@ -16,6 +17,7 @@ const VIDEO_SELECT = `
 `
 
 const VIDEO_ROLES = ['admin', 'manager'] as const
+const PLAYBACK_URL_TTL_SECONDS = 60 * 60
 
 async function enrichVideosWithProfiles(videos: Video[]): Promise<Video[]> {
   const profileIds = [
@@ -208,4 +210,30 @@ export async function restoreVideo(id: string): Promise<Video> {
   // Readable now that deleted_at is null. Throws NotFoundError if the id was
   // never real and the update matched nothing.
   return getVideo(id)
+}
+
+/** Short-lived signed URL for in-app preview (dashboard cards). */
+export async function getVideoPlaybackUrl(id: string): Promise<string> {
+  await requireRole([...VIDEO_ROLES])
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('videos')
+    .select('storage_path')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (error) throw new SupabaseError(error.message)
+  if (!data) throw new NotFoundError('Video not found')
+
+  const { data: signed, error: signError } = await supabase.storage
+    .from(VIDEOS_BUCKET)
+    .createSignedUrl(data.storage_path, PLAYBACK_URL_TTL_SECONDS)
+
+  if (signError || !signed?.signedUrl) {
+    throw new SupabaseError(signError?.message ?? 'Failed to create playback URL')
+  }
+
+  return signed.signedUrl
 }

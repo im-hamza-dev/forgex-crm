@@ -45,8 +45,8 @@ export default async function PublicVideoPage({ params }: PageProps) {
   if (!video) notFound()
 
   return (
-    <main className="min-h-screen bg-[var(--color-page)] px-4 py-10 sm:py-16">
-      <div className="mx-auto w-full max-w-[900px]">
+    <main className="min-h-screen bg-[var(--color-page)] py-10 sm:py-16 flex flex-col items-center">
+      <div className="w-[80vw]">
         <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-black shadow-[0_16px_48px_rgba(26,16,8,0.16)]">
           <video
             controls

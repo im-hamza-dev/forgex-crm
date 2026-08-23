@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Eye,
   EyeOff,
@@ -33,10 +33,12 @@ export function VideoActions({
   alwaysVisible = false,
 }: VideoActionsProps) {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   return (
     <div className={cn('relative', className)}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation()
@@ -56,6 +58,7 @@ export function VideoActions({
       <Dropdown
         open={open}
         onClose={() => setOpen(false)}
+        anchorRef={triggerRef}
         items={[
           {
             label: 'Edit details',

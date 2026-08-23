@@ -28,7 +28,7 @@ import type { Video, VideoEditableFields } from '@/types/videos'
 type VideosView = 'table' | 'cards'
 
 export default function VideosPage() {
-  const [view, setView] = useState<VideosView>('table')
+  const [view, setView] = useState<VideosView>('cards')
   const [searchQuery, setSearchQuery] = useState('')
   const [newOpen, setNewOpen] = useState(false)
   const [editing, setEditing] = useState<Video | null>(null)
@@ -100,8 +100,8 @@ export default function VideosPage() {
       <div className="flex items-center justify-between gap-4 mb-4">
         <SegmentedControl
           options={[
-            { value: 'table', label: 'Table', icon: <List size={14} /> },
             { value: 'cards', label: 'Cards', icon: <LayoutGrid size={14} /> },
+            { value: 'table', label: 'Table', icon: <List size={14} /> },
           ]}
           value={view}
           onChange={(v) => setView(v as VideosView)}
@@ -118,9 +118,9 @@ export default function VideosPage() {
       </div>
 
       {isLoading && (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} height={72} rounded="lg" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} height={320} rounded="lg" />
           ))}
         </div>
       )}

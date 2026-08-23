@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
+import { fetchClient } from '@/lib/api/fetch-client'
+import { ROUTES } from '@/constants/routes'
 import { buildPosterDataUri } from '@/lib/videos/poster'
 import { formatDuration, formatFileSize } from '@/lib/videos/format'
 import { VideoVisibilityBadge } from './VideoVisibilityBadge'
@@ -24,8 +27,26 @@ export function VideoCard({
   onCopyLink,
   onDelete,
 }: VideoCardProps) {
-  // Same generated banner the public page uses as its <video poster>.
   const poster = buildPosterDataUri(video.title, video.description)
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void fetchClient<{ data: { signedUrl: string } }>(
+      ROUTES.API.VIDEO_PLAYBACK_URL(video.id),
+    )
+      .then((res) => {
+        if (!cancelled) setPlaybackUrl(res.data.signedUrl)
+      })
+      .catch(() => {
+        // Poster stays visible if signing fails; no toast — card preview is best-effort.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [video.id])
 
   return (
     <div
@@ -35,12 +56,18 @@ export function VideoCard({
         'transition-shadow hover:shadow-[0_4px_16px_rgba(26,16,8,0.10)]',
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={poster}
-        alt=""
-        className="w-full aspect-video object-cover"
-      />
+      <div className="relative w-full aspect-video bg-black">
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          poster={poster}
+          src={playbackUrl ?? undefined}
+          className="block h-full w-full bg-black object-contain"
+        >
+          Your browser cannot play this video.
+        </video>
+      </div>
 
       <div className="flex flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
@@ -54,6 +81,7 @@ export function VideoCard({
             onCopyLink={onCopyLink}
             onDelete={onDelete}
             className="shrink-0 -mr-1"
+            alwaysVisible
           />
         </div>
 
