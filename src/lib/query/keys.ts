@@ -44,6 +44,7 @@ export const queryKeys = {
     list: (filters?: Record<string, string | undefined>) =>
       ['videos', 'list', filters ?? {}] as const,
     detail: (id: string) => ['videos', 'detail', id] as const,
+    events: (id: string) => ['videos', id, 'events'] as const,
   },
 
   // Blog
