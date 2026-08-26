@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui'
 import { formatDuration, formatFileSize } from '@/lib/videos/format'
 import { VideoVisibilityBadge } from './VideoVisibilityBadge'
 import { VideoActions } from './VideoActions'
+import { VideoMetrics } from './VideoMetrics'
 import type { Video } from '@/types/videos'
 
 interface VideosTableProps {
@@ -15,11 +16,13 @@ interface VideosTableProps {
   onToggleVisibility: (video: Video) => void
   onCopyLink: (video: Video) => void
   onDelete: (video: Video) => void
+  onActivity: (video: Video) => void
 }
 
 const COLUMNS = [
   { label: 'Title', cls: 'text-left pl-4' },
   { label: 'Visibility', cls: 'text-left w-[110px]' },
+  { label: 'Views / Plays', cls: 'text-left w-[130px]' },
   { label: 'Duration', cls: 'text-left w-[100px]' },
   { label: 'Size', cls: 'text-left w-[100px]' },
   { label: 'Created By', cls: 'text-left w-[150px]' },
@@ -35,6 +38,7 @@ export function VideosTable({
   onToggleVisibility,
   onCopyLink,
   onDelete,
+  onActivity,
 }: VideosTableProps) {
   const q = searchQuery.toLowerCase()
   const filtered = videos.filter(
@@ -107,6 +111,14 @@ export function VideosTable({
                   <VideoVisibilityBadge isPublic={video.is_public} />
                 </td>
 
+                <td className="py-3.5 pr-4 w-[130px]">
+                  <VideoMetrics
+                    viewCount={video.view_count}
+                    playCount={video.play_count}
+                    onClick={() => onActivity(video)}
+                  />
+                </td>
+
                 <td className="py-3.5 pr-4 w-[100px]">
                   <span className="text-[13px] tabular-nums text-[var(--color-text-body)]">
                     {formatDuration(video.duration_seconds)}
@@ -149,6 +161,7 @@ export function VideosTable({
                     onToggleVisibility={onToggleVisibility}
                     onCopyLink={onCopyLink}
                     onDelete={onDelete}
+                    onActivity={onActivity}
                   />
                 </td>
               </tr>
