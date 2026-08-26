@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import {
+  Activity,
   Eye,
   EyeOff,
   Link2,
@@ -10,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Dropdown } from '@/components/ui'
+import { Dropdown, type DropdownItem } from '@/components/ui'
 import type { Video } from '@/types/videos'
 
 interface VideoActionsProps {
@@ -19,6 +20,7 @@ interface VideoActionsProps {
   onToggleVisibility: (video: Video) => void
   onCopyLink: (video: Video) => void
   onDelete: (video: Video) => void
+  onActivity?: (video: Video) => void
   className?: string
   alwaysVisible?: boolean
 }
@@ -29,6 +31,7 @@ export function VideoActions({
   onToggleVisibility,
   onCopyLink,
   onDelete,
+  onActivity,
   className,
   alwaysVisible = false,
 }: VideoActionsProps) {
@@ -75,6 +78,15 @@ export function VideoActions({
             icon: <Link2 size={14} />,
             onClick: () => onCopyLink(video),
           },
+          ...(onActivity
+            ? ([
+                {
+                  label: 'View activity',
+                  icon: <Activity size={14} />,
+                  onClick: () => onActivity(video),
+                },
+              ] satisfies DropdownItem[])
+            : []),
           {
             label: 'Delete',
             icon: <Trash2 size={14} />,
