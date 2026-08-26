@@ -1464,6 +1464,59 @@ export type Database = {
           },
         ]
       }
+      video_events: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          device: string | null
+          event_type: string
+          id: string
+          ip: string | null
+          os: string | null
+          referrer: string | null
+          user_agent: string | null
+          video_id: string
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          event_type: string
+          id?: string
+          ip?: string | null
+          os?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          video_id: string
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          event_type?: string
+          id?: string
+          ip?: string | null
+          os?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_events_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos: {
         Row: {
           created_at: string
@@ -1475,10 +1528,12 @@ export type Database = {
           id: string
           is_public: boolean
           mime_type: string | null
+          play_count: number
           slug: string
           storage_path: string
           title: string
           updated_at: string
+          view_count: number
         }
         Insert: {
           created_at?: string
@@ -1490,10 +1545,12 @@ export type Database = {
           id?: string
           is_public?: boolean
           mime_type?: string | null
+          play_count?: number
           slug: string
           storage_path: string
           title: string
           updated_at?: string
+          view_count?: number
         }
         Update: {
           created_at?: string
@@ -1505,10 +1562,12 @@ export type Database = {
           id?: string
           is_public?: boolean
           mime_type?: string | null
+          play_count?: number
           slug?: string
           storage_path?: string
           title?: string
           updated_at?: string
+          view_count?: number
         }
         Relationships: [
           {
@@ -1572,6 +1631,21 @@ export type Database = {
         Returns: boolean
       }
       process_due_date_notifications: { Args: never; Returns: undefined }
+      record_video_event: {
+        Args: {
+          p_browser?: string
+          p_city?: string
+          p_country?: string
+          p_device?: string
+          p_event_type: string
+          p_ip?: string
+          p_os?: string
+          p_referrer?: string
+          p_user_agent?: string
+          p_video_id: string
+        }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       unaccent: { Args: { "": string }; Returns: string }
