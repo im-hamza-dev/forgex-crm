@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   // Public video share pages. Access control lives in the page itself, which
   // 404s unless the video is public and not soft-deleted.
   '/v',
+  // Anonymous view/play beacons from the public share page.
+  '/api/videos/public',
   '/manifest.json',
   '/portal/manifest.webmanifest',
   '/portal/manifest',

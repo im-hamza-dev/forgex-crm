@@ -14,6 +14,7 @@ import {
 import {
   EditVideoModal,
   NewVideoModal,
+  VideoActivityDrawer,
   VideoCard,
   VideosTable,
 } from '@/components/videos'
@@ -33,6 +34,7 @@ export default function VideosPage() {
   const [newOpen, setNewOpen] = useState(false)
   const [editing, setEditing] = useState<Video | null>(null)
   const [deleting, setDeleting] = useState<Video | null>(null)
+  const [activityVideo, setActivityVideo] = useState<Video | null>(null)
 
   const { data: videos = [], isLoading, isError, error } = useVideos()
   const updateVideo = useUpdateVideo()
@@ -93,6 +95,7 @@ export default function VideosPage() {
     onToggleVisibility: (video: Video) => void handleToggleVisibility(video),
     onCopyLink: (video: Video) => void handleCopyLink(video),
     onDelete: setDeleting,
+    onActivity: setActivityVideo,
   }
 
   return (
@@ -169,6 +172,12 @@ export default function VideosPage() {
           onSubmit={(data) => void handleEditSubmit(data)}
         />
       )}
+
+      <VideoActivityDrawer
+        video={activityVideo}
+        open={Boolean(activityVideo)}
+        onClose={() => setActivityVideo(null)}
+      />
 
       <Modal
         open={Boolean(deleting)}

@@ -10,6 +10,7 @@ import { buildPosterDataUri } from '@/lib/videos/poster'
 import { formatDuration, formatFileSize } from '@/lib/videos/format'
 import { VideoVisibilityBadge } from './VideoVisibilityBadge'
 import { VideoActions } from './VideoActions'
+import { VideoMetrics } from './VideoMetrics'
 import type { Video } from '@/types/videos'
 
 interface VideoCardProps {
@@ -18,6 +19,7 @@ interface VideoCardProps {
   onToggleVisibility: (video: Video) => void
   onCopyLink: (video: Video) => void
   onDelete: (video: Video) => void
+  onActivity: (video: Video) => void
 }
 
 export function VideoCard({
@@ -26,6 +28,7 @@ export function VideoCard({
   onToggleVisibility,
   onCopyLink,
   onDelete,
+  onActivity,
 }: VideoCardProps) {
   const poster = buildPosterDataUri(video.title, video.description)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
@@ -80,6 +83,7 @@ export function VideoCard({
             onToggleVisibility={onToggleVisibility}
             onCopyLink={onCopyLink}
             onDelete={onDelete}
+            onActivity={onActivity}
             className="shrink-0 -mr-1"
             alwaysVisible
           />
@@ -95,7 +99,7 @@ export function VideoCard({
           /v/{video.slug}
         </p>
 
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <VideoVisibilityBadge isPublic={video.is_public} />
           <span className="flex items-center gap-1 text-[11px] tabular-nums text-[var(--color-text-muted)]">
             <Clock size={11} />
@@ -104,6 +108,11 @@ export function VideoCard({
           <span className="text-[11px] tabular-nums text-[var(--color-text-muted)]">
             {formatFileSize(video.file_size_bytes)}
           </span>
+          <VideoMetrics
+            viewCount={video.view_count}
+            playCount={video.play_count}
+            onClick={() => onActivity(video)}
+          />
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-3 mt-1 border-t border-[var(--color-border)]">
