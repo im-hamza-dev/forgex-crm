@@ -67,6 +67,8 @@ export const ROUTES = {
     VIDEO:          (id: string) => `/api/videos/${id}`,
     VIDEO_RESTORE:  (id: string) => `/api/videos/${id}/restore`,
     VIDEO_PLAYBACK_URL: (id: string) => `/api/videos/${id}/playback-url`,
+    VIDEO_EVENTS: (id: string) => `/api/videos/${id}/events`,
+    VIDEO_PUBLIC_EVENTS: (slug: string) => `/api/videos/public/${slug}/events`,
     VIDEO_UPLOAD_URL: '/api/videos/upload-url',
     BLOG:           '/api/blog',
     BLOG_POST:      (id: string) => `/api/blog/${id}`,
