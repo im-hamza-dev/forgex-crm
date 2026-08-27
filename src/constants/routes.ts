@@ -25,6 +25,7 @@ export const ROUTES = {
   BLOG:             '/blog',
   BLOG_POST:        (id: string) => `/blog/${id}`,
   BLOG_NEW:         '/blog/new',
+  BLOG_SUBSCRIBERS: '/blog/subscribers',
 
   // Videos
   VIDEOS:           '/videos',

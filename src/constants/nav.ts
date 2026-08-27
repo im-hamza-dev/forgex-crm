@@ -11,6 +11,7 @@ import {
   Bell,
   UserSquare,
   Settings2,
+  Mail,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from './routes'
@@ -67,6 +68,12 @@ const ALL_GROUPS: NavGroup[] = [
         label: 'Blog',
         href: ROUTES.BLOG,
         icon: FileText,
+        permission: 'canViewBlog',
+      },
+      {
+        label: 'Subscribers',
+        href: ROUTES.BLOG_SUBSCRIBERS,
+        icon: Mail,
         permission: 'canViewBlog',
       },
       {
