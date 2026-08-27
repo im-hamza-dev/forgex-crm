@@ -30,6 +30,15 @@ const updateSchema = z
     og_image_url: z.string().nullable().optional(),
     is_featured: z.boolean().optional(),
     allow_comments: z.boolean().optional(),
+    faqs: z
+      .array(
+        z.object({
+          question: z.string().min(1),
+          answer: z.string().min(1),
+        }),
+      )
+      .nullable()
+      .optional(),
   })
   .strict()
 

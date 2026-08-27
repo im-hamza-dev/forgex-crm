@@ -185,6 +185,7 @@ export async function createBlogPost(input: {
   og_image_url?: string | null
   is_featured?: boolean
   allow_comments?: boolean
+  faqs?: { question: string; answer: string }[] | null
 }) {
   const session = await requireSession()
   const supabase = await createClient()
@@ -230,6 +231,7 @@ export async function createBlogPost(input: {
       is_featured:
         session.role === 'admin' ? (input.is_featured ?? false) : false,
       allow_comments: input.allow_comments ?? true,
+      faqs: input.faqs ?? null,
     })
     .select(
       `
@@ -281,6 +283,7 @@ export async function updateBlogPost(id: string, input: Partial<BlogPostUpdate>)
   const updatePayload: BlogPostUpdate = {
     ...input,
     updated_at: new Date().toISOString(),
+    ...(input.faqs !== undefined && { faqs: input.faqs }),
   }
 
   if (input.title && !input.slug) {

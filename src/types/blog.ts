@@ -4,6 +4,8 @@ export type BlogPostStatus = Database['public']['Enums']['blog_post_status']
 export type BlogCommentStatus =
   Database['public']['Enums']['blog_comment_status']
 
+export type BlogFaq = { question: string; answer: string }
+
 export type BlogPost = Database['public']['Tables']['blog_posts']['Row'] & {
   author?: {
     full_name: string | null
@@ -17,6 +19,7 @@ export type BlogPost = Database['public']['Tables']['blog_posts']['Row'] & {
   /** Flattened helpers for UI that still expects these */
   author_name?: string
   author_avatar?: string | null
+  faqs: BlogFaq[] | null
 }
 
 export type BlogPostInsert = Database['public']['Tables']['blog_posts']['Insert']

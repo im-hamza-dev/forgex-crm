@@ -105,6 +105,9 @@ export function BlogEditor({
   const [isFeatured, setIsFeatured] = useState(
     resolvedPost?.is_featured ?? false,
   )
+  const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>(
+    Array.isArray(resolvedPost?.faqs) ? resolvedPost.faqs : [],
+  )
   const [coverUrl, setCoverUrl] = useState(
     resolvedPost?.cover_image_url ?? null,
   )
@@ -158,6 +161,7 @@ export function BlogEditor({
     isFeatured,
     coverUrl,
     publishDate,
+    faqs,
   ])
 
   useEffect(() => {
@@ -179,6 +183,7 @@ export function BlogEditor({
       setTagsInput((resolvedPost.tags ?? []).join(', '))
       setAllowComments(resolvedPost.allow_comments ?? true)
       setIsFeatured(resolvedPost.is_featured ?? false)
+      setFaqs(Array.isArray(resolvedPost.faqs) ? resolvedPost.faqs : [])
       setCoverUrl(resolvedPost.cover_image_url ?? null)
       setLastSavedAt(
         resolvedPost.updated_at ? new Date(resolvedPost.updated_at) : null,
@@ -205,6 +210,12 @@ export function BlogEditor({
         og_image_url: ogIsCover ? coverUrl : null,
         is_featured: isFeatured,
         allow_comments: allowComments,
+        faqs: (() => {
+          const cleaned = faqs.filter(
+            (f) => f.question.trim().length > 0 && f.answer.trim().length > 0,
+          )
+          return cleaned.length > 0 ? cleaned : null
+        })(),
         publish_date:
           nextStatus === 'scheduled' && publishDate ? publishDate : null,
       }
@@ -221,6 +232,7 @@ export function BlogEditor({
       ogIsCover,
       isFeatured,
       allowComments,
+      faqs,
       publishDate,
     ],
   )
@@ -815,6 +827,7 @@ export function BlogEditor({
                 allowComments={allowComments}
                 ogImageIsCover={ogIsCover}
                 isFeatured={isFeatured}
+                faqs={faqs}
                 authorName={authorName}
                 readingTime={resolvedPost?.reading_time_minutes ?? null}
                 onSeoTitleChange={setSeoTitle}
@@ -824,6 +837,7 @@ export function BlogEditor({
                 onTagsChange={setTags}
                 onAllowCommentsChange={setAllowComments}
                 onOgImageIsCoverChange={setOgIsCover}
+                onFaqsChange={setFaqs}
                 onIsFeaturedChange={
                   canFeaturePost(profile) ? setIsFeatured : undefined
                 }

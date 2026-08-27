@@ -31,6 +31,8 @@ interface BlogSeoPanelProps {
   onAllowCommentsChange: (v: boolean) => void
   onOgImageIsCoverChange: (v: boolean) => void
   onIsFeaturedChange?: (v: boolean) => void
+  faqs: Array<{ question: string; answer: string }>
+  onFaqsChange: (faqs: Array<{ question: string; answer: string }>) => void
   canEdit?: boolean
   status?: string
   publishDate?: string
@@ -155,6 +157,8 @@ export function BlogSeoPanel({
   onAllowCommentsChange,
   onOgImageIsCoverChange,
   onIsFeaturedChange,
+  faqs,
+  onFaqsChange,
   canEdit = true,
   status,
   publishDate,
@@ -259,6 +263,85 @@ export function BlogSeoPanel({
             Google Preview
           </p>
         </div>
+      </AccordionSection>
+
+      <AccordionSection title="FAQs" defaultOpen>
+        <p
+          className="text-[12px] leading-relaxed mb-3"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Add Q&amp;A pairs that AI systems can extract as citations.
+        </p>
+
+        <div className="space-y-3">
+          {faqs.map((faq, index) => (
+            <div
+              key={index}
+              className="rounded-lg border p-3"
+              style={{ borderColor: 'var(--color-border)' }}
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <PanelLabel>Question {index + 1}</PanelLabel>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onFaqsChange(faqs.filter((_, i) => i !== index))
+                  }
+                  aria-label={`Remove FAQ ${index + 1}`}
+                  className="h-6 w-6 flex items-center justify-center rounded-md text-[14px] leading-none hover:bg-[var(--color-surface-hover)]"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  ×
+                </button>
+              </div>
+              <PanelInput
+                value={faq.question}
+                onChange={(v) => {
+                  const next = faqs.map((item, i) =>
+                    i === index ? { ...item, question: v } : item,
+                  )
+                  onFaqsChange(next)
+                }}
+                placeholder="What question will readers ask?"
+                className="mb-2"
+              />
+              <PanelLabel>Answer</PanelLabel>
+              <textarea
+                value={faq.answer}
+                onChange={(e) => {
+                  const next = faqs.map((item, i) =>
+                    i === index
+                      ? { ...item, answer: e.target.value }
+                      : item,
+                  )
+                  onFaqsChange(next)
+                }}
+                rows={3}
+                placeholder="Clear, citable answer..."
+                className={cn(
+                  'w-full px-3 py-2 rounded-lg text-[13px] resize-none',
+                  'border outline-none transition-colors',
+                  'border-[var(--color-border)] focus:border-[var(--color-accent)]',
+                )}
+                style={{
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-body)',
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            onFaqsChange([...faqs, { question: '', answer: '' }])
+          }
+          className="mt-3 h-[36px] w-full rounded-lg text-[12px] font-medium border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          style={{ color: 'var(--color-text-body)' }}
+        >
+          Add FAQ
+        </button>
       </AccordionSection>
 
       <AccordionSection title="Publishing" defaultOpen>

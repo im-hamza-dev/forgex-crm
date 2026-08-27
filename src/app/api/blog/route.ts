@@ -21,6 +21,15 @@ const createSchema = z.object({
   og_image_url: z.string().nullable().optional(),
   is_featured: z.boolean().optional(),
   allow_comments: z.boolean().optional(),
+  faqs: z
+    .array(
+      z.object({
+        question: z.string().min(1),
+        answer: z.string().min(1),
+      }),
+    )
+    .nullable()
+    .optional(),
 })
 
 export async function GET(request: Request) {
