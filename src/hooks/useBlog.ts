@@ -211,3 +211,31 @@ export function useDeleteBlogComment() {
     },
   })
 }
+
+export function useReplyToBlogComment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      postId,
+      commentId,
+      content,
+    }: {
+      postId: string
+      commentId: string
+      content: string
+    }) => {
+      const res = await fetchClient<
+        ApiData<{ success: boolean; reply_id: string; data: BlogComment }>
+      >(`${ROUTES.API.BLOG_POST(postId)}/comments/${commentId}/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      })
+      return res.data
+    },
+    onSuccess: (_data, { postId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.blog.comments(postId),
+      })
+    },
+  })
+}

@@ -31,7 +31,35 @@ export type BlogComment =
       full_name: string | null
       avatar_url: string | null
     } | null
+    community_user?: {
+      display_name: string | null
+      email: string | null
+      avatar_url: string | null
+    } | null
+    post?: {
+      title: string
+      slug: string
+    } | null
   }
+
+export function getCommenterName(comment: BlogComment): string {
+  if (comment.is_team_reply || comment.team_user_id) {
+    return comment.author?.full_name ?? comment.author_name ?? 'Forgex'
+  }
+  return (
+    comment.community_user?.display_name ??
+    comment.author_name ??
+    'Anonymous'
+  )
+}
+
+export function getCommenterEmail(comment: BlogComment): string {
+  return (
+    comment.community_user?.email ??
+    comment.author_email ??
+    'No email provided'
+  )
+}
 
 export type BlogFilters = {
   search?: string

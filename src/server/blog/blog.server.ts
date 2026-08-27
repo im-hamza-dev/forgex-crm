@@ -18,11 +18,43 @@ import type {
   BlogPostUpdate,
 } from '@/types/blog'
 import type { Json } from '@/types/database.types'
+import {
+  markNotificationSent,
+  sendCommentApprovedEmail,
+  sendCommentReplyEmail,
+  shouldSendNotification,
+} from '@/lib/email/blog-comments'
 
 type ProfileSnippet = {
   id: string
   full_name: string | null
   avatar_url: string | null
+}
+
+type CommentQueryRow = BlogComment & {
+  community_user?: BlogComment['community_user'] | BlogComment['community_user'][]
+  post?: BlogComment['post'] | BlogComment['post'][]
+}
+
+const COMMENT_SELECT = `
+  *,
+  community_user:community_users!community_user_id (
+    display_name,
+    email,
+    avatar_url
+  ),
+  post:blog_posts!post_id (
+    title,
+    slug
+  )
+`
+
+function normalizeCommentRow(row: CommentQueryRow): BlogComment {
+  const community_user = Array.isArray(row.community_user)
+    ? (row.community_user[0] ?? null)
+    : (row.community_user ?? null)
+  const post = Array.isArray(row.post) ? (row.post[0] ?? null) : (row.post ?? null)
+  return { ...row, community_user, post }
 }
 
 function slugify(str: string) {
@@ -333,30 +365,47 @@ export async function getBlogComments(postId: string): Promise<BlogComment[]> {
 
   const { data, error } = await supabase
     .from('blog_comments')
-    .select('*')
+    .select(COMMENT_SELECT)
     .eq('post_id', postId)
     .order('created_at', { ascending: false })
 
   if (error) throw new SupabaseError(error.message)
 
+  const rows = (data ?? []).map((row) =>
+    normalizeCommentRow(row as CommentQueryRow),
+  )
+
   const teamIds = [
     ...new Set(
-      (data ?? [])
+      rows
         .map((c) => c.team_user_id)
         .filter((id): id is string => Boolean(id)),
     ),
   ]
   const profiles = await fetchProfiles(teamIds)
 
-  return (data ?? []).map((c) => ({
-    ...c,
-    author: c.team_user_id
-      ? {
-          full_name: profiles[c.team_user_id]?.full_name ?? null,
+  return rows.map((c) => {
+    if (c.team_user_id) {
+      return {
+        ...c,
+        author: {
+          full_name:
+            profiles[c.team_user_id]?.full_name ?? c.author_name ?? 'Forgex',
           avatar_url: profiles[c.team_user_id]?.avatar_url ?? null,
-        }
-      : { full_name: 'Community', avatar_url: null },
-  }))
+        },
+      }
+    }
+
+    const name =
+      c.community_user?.display_name ?? c.author_name ?? 'Anonymous'
+    return {
+      ...c,
+      author: {
+        full_name: name,
+        avatar_url: c.community_user?.avatar_url ?? null,
+      },
+    }
+  })
 }
 
 export async function moderateBlogComment(
@@ -381,11 +430,132 @@ export async function moderateBlogComment(
       updated_at: new Date().toISOString(),
     })
     .eq('id', commentId)
-    .select()
+    .select(COMMENT_SELECT)
     .single()
 
   if (error) throw new SupabaseError(error.message)
-  return data
+
+  const approvedComment = normalizeCommentRow(data as CommentQueryRow)
+
+  if (status === 'approved') {
+    const commenterEmail =
+      approvedComment.community_user?.email ?? approvedComment.author_email
+    const commenterName =
+      approvedComment.community_user?.display_name ??
+      approvedComment.author_name
+
+    if (commenterEmail && commenterName) {
+      const service = createServiceClient()
+      const shouldSend = await shouldSendNotification(service, commenterEmail)
+      if (shouldSend) {
+        try {
+          await sendCommentApprovedEmail({
+            email: commenterEmail,
+            authorName: commenterName,
+            postTitle: approvedComment.post?.title ?? 'Forgex Blog',
+            postSlug: approvedComment.post?.slug ?? '',
+          })
+          await markNotificationSent(service, approvedComment.id)
+        } catch (emailErr) {
+          console.error('Comment approved email failed:', emailErr)
+        }
+      }
+    }
+  }
+
+  return approvedComment
+}
+
+export async function replyToBlogComment(input: {
+  postId: string
+  parentCommentId: string
+  content: string
+}): Promise<BlogComment> {
+  const session = await requireSession()
+  if (session.role !== 'admin' && session.role !== 'manager') {
+    throw new ForbiddenError('Cannot reply to comments')
+  }
+
+  const content = input.content.trim()
+  if (!content || content.length > 2000) {
+    throw new ValidationError('Reply must be between 1 and 2000 characters')
+  }
+
+  const supabase = await createClient()
+  const service = createServiceClient()
+
+  const { data: parent, error: parentError } = await supabase
+    .from('blog_comments')
+    .select(COMMENT_SELECT)
+    .eq('id', input.parentCommentId)
+    .eq('post_id', input.postId)
+    .maybeSingle()
+
+  if (parentError) throw new SupabaseError(parentError.message)
+  if (!parent) throw new NotFoundError('Parent comment not found')
+
+  const parentComment = normalizeCommentRow(parent as CommentQueryRow)
+  if (parentComment.is_team_reply) {
+    throw new ValidationError('Cannot reply to a team reply')
+  }
+
+  const authorName = session.profile?.full_name ?? 'Hamza Iqbal'
+
+  const { data: reply, error } = await supabase
+    .from('blog_comments')
+    .insert({
+      post_id: input.postId,
+      parent_comment_id: input.parentCommentId,
+      team_user_id: session.user.id,
+      content,
+      status: 'approved',
+      is_team_reply: true,
+      author_name: authorName,
+      author_email: 'hamza@forgex.systems',
+      reviewed_by: session.user.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .select(COMMENT_SELECT)
+    .single()
+
+  if (error) throw new SupabaseError(error.message)
+
+  const normalizedReply = normalizeCommentRow(reply as CommentQueryRow)
+
+  const commenterEmail =
+    parentComment.community_user?.email ?? parentComment.author_email
+  const commenterName =
+    parentComment.community_user?.display_name ?? parentComment.author_name
+
+  if (commenterEmail && commenterName) {
+    const shouldSend = await shouldSendNotification(service, commenterEmail)
+    if (shouldSend) {
+      try {
+        await sendCommentReplyEmail({
+          email: commenterEmail,
+          authorName: commenterName,
+          postTitle:
+            parentComment.post?.title ??
+            normalizedReply.post?.title ??
+            'Forgex Blog',
+          postSlug:
+            parentComment.post?.slug ?? normalizedReply.post?.slug ?? '',
+          replyContent: content,
+        })
+        await markNotificationSent(service, parentComment.id)
+      } catch (emailErr) {
+        console.error('Reply email failed:', emailErr)
+      }
+    }
+  }
+
+  return {
+    ...normalizedReply,
+    author: {
+      full_name: authorName,
+      avatar_url: session.profile?.avatar_url ?? null,
+    },
+  }
 }
 
 export async function deleteBlogComment(commentId: string) {
