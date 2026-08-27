@@ -38,6 +38,15 @@ export const queryKeys = {
   },
   task: (id: string) => ['tasks', 'detail', id] as const,
 
+  // Videos
+  videos: {
+    all: ['videos'] as const,
+    list: (filters?: Record<string, string | undefined>) =>
+      ['videos', 'list', filters ?? {}] as const,
+    detail: (id: string) => ['videos', 'detail', id] as const,
+    events: (id: string) => ['videos', id, 'events'] as const,
+  },
+
   // Blog
   blog: {
     all: ['blog'] as const,

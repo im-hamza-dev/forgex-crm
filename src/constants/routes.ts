@@ -26,6 +26,11 @@ export const ROUTES = {
   BLOG_POST:        (id: string) => `/blog/${id}`,
   BLOG_NEW:         '/blog/new',
 
+  // Videos
+  VIDEOS:           '/videos',
+  /** Public share page. Slug is frozen at creation so old links keep working. */
+  VIDEO_PUBLIC:     (slug: string) => `/v/${slug}`,
+
   // Content
   CONTENT_CALENDAR: '/content-calendar',
   DOCS:             '/docs',
@@ -58,6 +63,13 @@ export const ROUTES = {
     PROJECT:        (id: string) => `/api/projects/${id}`,
     TASKS:          '/api/tasks',
     TASK:           (id: string) => `/api/tasks/${id}`,
+    VIDEOS:         '/api/videos',
+    VIDEO:          (id: string) => `/api/videos/${id}`,
+    VIDEO_RESTORE:  (id: string) => `/api/videos/${id}/restore`,
+    VIDEO_PLAYBACK_URL: (id: string) => `/api/videos/${id}/playback-url`,
+    VIDEO_EVENTS: (id: string) => `/api/videos/${id}/events`,
+    VIDEO_PUBLIC_EVENTS: (slug: string) => `/api/videos/public/${slug}/events`,
+    VIDEO_UPLOAD_URL: '/api/videos/upload-url',
     BLOG:           '/api/blog',
     BLOG_POST:      (id: string) => `/api/blog/${id}`,
     NOTIFICATIONS:  '/api/notifications',
