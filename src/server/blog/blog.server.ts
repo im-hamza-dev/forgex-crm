@@ -181,6 +181,7 @@ export async function createBlogPost(input: {
   publish_date?: string | null
   seo_title?: string | null
   seo_description?: string | null
+  tldr?: string | null
   canonical_url?: string | null
   og_image_url?: string | null
   is_featured?: boolean
@@ -225,6 +226,7 @@ export async function createBlogPost(input: {
       publish_date: input.publish_date ?? null,
       seo_title: input.seo_title ?? null,
       seo_description: input.seo_description ?? null,
+      tldr: input.tldr ?? null,
       canonical_url: input.canonical_url ?? null,
       og_image_url: input.og_image_url ?? null,
       reading_time_minutes: estimateReadingTime(body),

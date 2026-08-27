@@ -93,6 +93,7 @@ export function BlogEditor({
   )
   const [seoTitle, setSeoTitle] = useState(resolvedPost?.seo_title ?? '')
   const [seoDesc, setSeoDesc] = useState(resolvedPost?.seo_description ?? '')
+  const [tldr, setTldr] = useState(resolvedPost?.tldr ?? '')
   const [categoryId, setCategoryId] = useState(resolvedPost?.category_id ?? '')
   const [tags, setTags] = useState<string[]>(resolvedPost?.tags ?? [])
   const [tagsInput, setTagsInput] = useState(
@@ -155,6 +156,7 @@ export function BlogEditor({
     status,
     seoTitle,
     seoDesc,
+    tldr,
     categoryId,
     tags,
     allowComments,
@@ -178,6 +180,7 @@ export function BlogEditor({
       )
       setSeoTitle(resolvedPost.seo_title ?? '')
       setSeoDesc(resolvedPost.seo_description ?? '')
+      setTldr(resolvedPost.tldr ?? '')
       setCategoryId(resolvedPost.category_id ?? '')
       setTags(resolvedPost.tags ?? [])
       setTagsInput((resolvedPost.tags ?? []).join(', '))
@@ -207,6 +210,7 @@ export function BlogEditor({
         status: nextStatus,
         seo_title: seoTitle || null,
         seo_description: seoDesc || null,
+        tldr: tldr.trim() || null,
         og_image_url: ogIsCover ? coverUrl : null,
         is_featured: isFeatured,
         allow_comments: allowComments,
@@ -229,6 +233,7 @@ export function BlogEditor({
       status,
       seoTitle,
       seoDesc,
+      tldr,
       ogIsCover,
       isFeatured,
       allowComments,
@@ -810,7 +815,7 @@ export function BlogEditor({
           />
 
           <div
-            className="w-[280px] shrink-0 overflow-y-auto p-4"
+            className="w-[360px] shrink-0 overflow-y-auto p-4"
             style={{ background: 'var(--color-page)' }}
           >
             <div
@@ -821,6 +826,7 @@ export function BlogEditor({
                 title={title}
                 seoTitle={seoTitle}
                 seoDescription={seoDesc}
+                tldr={tldr}
                 categoryId={categoryId}
                 tags={tags}
                 tagsInput={tagsInput}
@@ -832,6 +838,7 @@ export function BlogEditor({
                 readingTime={resolvedPost?.reading_time_minutes ?? null}
                 onSeoTitleChange={setSeoTitle}
                 onSeoDescChange={setSeoDesc}
+                onTldrChange={setTldr}
                 onCategoryChange={setCategoryId}
                 onTagsInputChange={setTagsInput}
                 onTagsChange={setTags}

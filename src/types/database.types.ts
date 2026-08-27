@@ -181,6 +181,7 @@ export type Database = {
           status: Database["public"]["Enums"]["blog_post_status"]
           tags: string[]
           title: string
+          tldr: string | null
           updated_at: string
           view_count: number
         }
@@ -208,6 +209,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["blog_post_status"]
           tags?: string[]
           title: string
+          tldr?: string | null
           updated_at?: string
           view_count?: number
         }
@@ -235,6 +237,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["blog_post_status"]
           tags?: string[]
           title?: string
+          tldr?: string | null
           updated_at?: string
           view_count?: number
         }

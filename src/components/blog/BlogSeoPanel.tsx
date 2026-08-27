@@ -15,6 +15,7 @@ interface BlogSeoPanelProps {
   title: string
   seoTitle: string
   seoDescription: string
+  tldr: string
   categoryId: string
   tags: string[]
   tagsInput: string
@@ -25,6 +26,7 @@ interface BlogSeoPanelProps {
   readingTime: number | null
   onSeoTitleChange: (v: string) => void
   onSeoDescChange: (v: string) => void
+  onTldrChange: (v: string) => void
   onCategoryChange: (v: string) => void
   onTagsInputChange: (v: string) => void
   onTagsChange: (tags: string[]) => void
@@ -141,6 +143,7 @@ export function BlogSeoPanel({
   title,
   seoTitle,
   seoDescription,
+  tldr,
   categoryId,
   tags,
   tagsInput,
@@ -151,6 +154,7 @@ export function BlogSeoPanel({
   readingTime,
   onSeoTitleChange,
   onSeoDescChange,
+  onTldrChange,
   onCategoryChange,
   onTagsInputChange,
   onTagsChange,
@@ -212,13 +216,34 @@ export function BlogSeoPanel({
 
         <div className="mb-3">
           <PanelLabel counter={`${seoDescription.length}/160`}>
-            Meta Description
+            Short Summary
           </PanelLabel>
           <textarea
             value={seoDescription}
             onChange={(e) => onSeoDescChange(e.target.value)}
             maxLength={160}
             rows={3}
+            placeholder="Short summary used as meta description and list excerpt..."
+            className={cn(
+              'w-full px-3 py-2 rounded-lg text-[13px] resize-none',
+              'border outline-none transition-colors',
+              'border-[var(--color-border)] focus:border-[var(--color-accent)]',
+            )}
+            style={{
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-body)',
+            }}
+          />
+        </div>
+
+        <div className="mb-3">
+          <PanelLabel counter={`${tldr.length}/500`}>TL;DR</PanelLabel>
+          <textarea
+            value={tldr}
+            onChange={(e) => onTldrChange(e.target.value)}
+            maxLength={500}
+            rows={4}
+            placeholder="Key takeaways for readers who want the gist..."
             className={cn(
               'w-full px-3 py-2 rounded-lg text-[13px] resize-none',
               'border outline-none transition-colors',

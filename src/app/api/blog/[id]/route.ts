@@ -26,6 +26,7 @@ const updateSchema = z
     publish_date: z.string().nullable().optional(),
     seo_title: z.string().nullable().optional(),
     seo_description: z.string().nullable().optional(),
+    tldr: z.string().nullable().optional(),
     canonical_url: z.string().nullable().optional(),
     og_image_url: z.string().nullable().optional(),
     is_featured: z.boolean().optional(),
