@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { ok, badRequest } from '@/lib/api/responses'
 import { handleRouteError } from '@/server/shared/handle-route-error'
 import { getBlogPosts, createBlogPost } from '@/server/blog/blog.server'
+import { uploadBlogOgImage } from '@/lib/og/uploadBlogOgImage'
 
 const createSchema = z.object({
   title: z.string().min(1).optional().default('Untitled'),
@@ -60,6 +61,14 @@ export async function POST(request: Request) {
       ...parsed.data,
       body: parsed.data.body as never,
     })
+
+    // Generate and upload OG image after successful insert
+    // Run without await — non-blocking, failure never affects response
+    // og_image_url updates in DB within seconds
+    uploadBlogOgImage(data.id, data.title).catch((err) =>
+      console.error('[OG] Background generation error:', err),
+    )
+
     return ok(data)
   } catch (error) {
     return handleRouteError(error)

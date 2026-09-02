@@ -20,7 +20,6 @@ interface BlogSeoPanelProps {
   tags: string[]
   tagsInput: string
   allowComments: boolean
-  ogImageIsCover: boolean
   isFeatured: boolean
   authorName: string
   readingTime: number | null
@@ -31,7 +30,6 @@ interface BlogSeoPanelProps {
   onTagsInputChange: (v: string) => void
   onTagsChange: (tags: string[]) => void
   onAllowCommentsChange: (v: boolean) => void
-  onOgImageIsCoverChange: (v: boolean) => void
   onIsFeaturedChange?: (v: boolean) => void
   faqs: Array<{ question: string; answer: string }>
   onFaqsChange: (faqs: Array<{ question: string; answer: string }>) => void
@@ -148,7 +146,6 @@ export function BlogSeoPanel({
   tags,
   tagsInput,
   allowComments,
-  ogImageIsCover,
   isFeatured,
   authorName,
   readingTime,
@@ -159,7 +156,6 @@ export function BlogSeoPanel({
   onTagsInputChange,
   onTagsChange,
   onAllowCommentsChange,
-  onOgImageIsCoverChange,
   onIsFeaturedChange,
   faqs,
   onFaqsChange,
@@ -506,21 +502,6 @@ export function BlogSeoPanel({
             type="checkbox"
             checked={allowComments}
             onChange={(e) => onAllowCommentsChange(e.target.checked)}
-            className="w-4 h-4 accent-[var(--color-accent)]"
-          />
-        </label>
-
-        <label className="flex items-center justify-between mb-2 cursor-pointer">
-          <span
-            className="text-[12px] font-medium uppercase tracking-[0.05em]"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            OG Image = Cover
-          </span>
-          <input
-            type="checkbox"
-            checked={ogImageIsCover}
-            onChange={(e) => onOgImageIsCoverChange(e.target.checked)}
             className="w-4 h-4 accent-[var(--color-accent)]"
           />
         </label>

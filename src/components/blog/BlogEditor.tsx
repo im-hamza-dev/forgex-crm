@@ -102,7 +102,6 @@ export function BlogEditor({
   const [allowComments, setAllowComments] = useState(
     resolvedPost?.allow_comments ?? true,
   )
-  const [ogIsCover, setOgIsCover] = useState(true)
   const [isFeatured, setIsFeatured] = useState(
     resolvedPost?.is_featured ?? false,
   )
@@ -211,7 +210,7 @@ export function BlogEditor({
         seo_title: seoTitle || null,
         seo_description: seoDesc || null,
         tldr: tldr.trim() || null,
-        og_image_url: ogIsCover ? coverUrl : null,
+        // og_image_url is set server-side after create — do not overwrite on save
         is_featured: isFeatured,
         allow_comments: allowComments,
         faqs: (() => {
@@ -234,7 +233,6 @@ export function BlogEditor({
       seoTitle,
       seoDesc,
       tldr,
-      ogIsCover,
       isFeatured,
       allowComments,
       faqs,
@@ -831,7 +829,6 @@ export function BlogEditor({
                 tags={tags}
                 tagsInput={tagsInput}
                 allowComments={allowComments}
-                ogImageIsCover={ogIsCover}
                 isFeatured={isFeatured}
                 faqs={faqs}
                 authorName={authorName}
@@ -843,7 +840,6 @@ export function BlogEditor({
                 onTagsInputChange={setTagsInput}
                 onTagsChange={setTags}
                 onAllowCommentsChange={setAllowComments}
-                onOgImageIsCoverChange={setOgIsCover}
                 onFaqsChange={setFaqs}
                 onIsFeaturedChange={
                   canFeaturePost(profile) ? setIsFeatured : undefined
