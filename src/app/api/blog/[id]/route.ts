@@ -6,6 +6,8 @@ import {
   updateBlogPost,
   deleteBlogPost,
 } from '@/server/blog/blog.server'
+import { uploadBlogOgImage } from '@/lib/og/uploadBlogOgImage'
+import { createServiceClient } from '@/lib/supabase/service'
 
 function isUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
@@ -69,10 +71,37 @@ export async function PATCH(
     if (!parsed.success) {
       return badRequest(parsed.error.issues[0]?.message ?? 'Invalid input')
     }
+
+    // Detect title change before updating
+    // Only regenerate OG image if title actually changed
+    // This prevents unnecessary generation on every autosave
+    let titleChanged = false
+    if (parsed.data.title) {
+      const supabaseService = createServiceClient()
+      const { data: currentPost } = await supabaseService
+        .from('blog_posts')
+        .select('title')
+        .eq('id', id)
+        .single()
+
+      titleChanged = Boolean(
+        currentPost && currentPost.title !== parsed.data.title,
+      )
+    }
+
     const data = await updateBlogPost(id, {
       ...parsed.data,
       body: parsed.data.body as never,
     })
+
+    // Fire and forget — same pattern as POST route
+    // Failure never affects the update response
+    if (titleChanged && parsed.data.title) {
+      uploadBlogOgImage(id, parsed.data.title).catch((err) =>
+        console.error('[OG] Title update regeneration failed:', err),
+      )
+    }
+
     return ok(data)
   } catch (error) {
     return handleRouteError(error)
