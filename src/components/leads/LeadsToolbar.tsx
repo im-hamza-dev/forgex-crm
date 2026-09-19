@@ -17,6 +17,9 @@ interface LeadsToolbarProps {
   onPriorityFilterChange?: (value: string) => void
   statusFilter?: string
   onStatusFilterChange?: (value: string) => void
+  assignedToFilter?: string
+  onAssignedToFilterChange?: (value: string) => void
+  assigneeOptions?: { value: string; label: string }[]
   filterActive?: boolean
 }
 
@@ -31,6 +34,9 @@ export function LeadsToolbar({
   onPriorityFilterChange,
   statusFilter = '',
   onStatusFilterChange,
+  assignedToFilter = '',
+  onAssignedToFilterChange,
+  assigneeOptions,
 }: LeadsToolbarProps) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -104,6 +110,25 @@ export function LeadsToolbar({
         <option value="lost">Lost</option>
         <option value="archived">Archived</option>
       </select>
+
+      {assigneeOptions && onAssignedToFilterChange && (
+        <select
+          value={assignedToFilter}
+          onChange={(e) => onAssignedToFilterChange(e.target.value)}
+          className={cn(
+            'h-[34px] px-2.5 rounded-lg text-[12px]',
+            'border border-[var(--color-border)] outline-none',
+            'bg-[var(--color-surface)] text-[var(--color-text-body)]',
+          )}
+          aria-label="Filter by assignee"
+        >
+          {assigneeOptions.map((opt) => (
+            <option key={opt.value || 'all'} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   )
 }

@@ -9,7 +9,17 @@ import { useAuth } from '@/hooks/useAuth'
 import { useLeadActivity, useUpdateLead } from '@/hooks/useLeads'
 import { canEditLead } from '@/lib/leads-permissions'
 import { getStage, LEAD_STAGES } from '@/constants/lead-stages'
-import type { Lead, LeadActivity, LeadPriority, LeadStatus } from '@/types/leads'
+import {
+  getSourceLabel,
+  sourceSelectOptions,
+} from '@/constants/lead-sources'
+import type {
+  Lead,
+  LeadActivity,
+  LeadPriority,
+  LeadSource,
+  LeadStatus,
+} from '@/types/leads'
 
 const SERVICE_LABELS: Record<string, string> = {
   saas_mvp: 'SaaS MVP',
@@ -17,15 +27,6 @@ const SERVICE_LABELS: Record<string, string> = {
   custom_crm: 'Custom CRM',
   ai_agents: 'AI Agents',
   tech_retainer: 'Tech Retainer',
-  other: 'Other',
-}
-
-const SOURCE_LABELS: Record<string, string> = {
-  website_form: 'Website form',
-  referral: 'Referral',
-  cold_outreach: 'Cold outreach',
-  social: 'Social media',
-  linkedin: 'LinkedIn',
   other: 'Other',
 }
 
@@ -153,6 +154,8 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
     status: lead.status,
     lead_score: lead.lead_score?.toString() ?? '',
     next_follow_up: lead.next_follow_up ?? '',
+    description: lead.description ?? '',
+    source: lead.source,
   })
   const [addingTag, setAddingTag] = useState(false)
   const [tagInput, setTagInput] = useState('')
@@ -196,6 +199,8 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
           status: draft.status as LeadStatus,
           lead_score: score ? Number(score) : null,
           next_follow_up: draft.next_follow_up || null,
+          description: draft.description.trim() || null,
+          source: draft.source,
         },
       })
       toast.success('Lead updated')
@@ -226,12 +231,6 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
     }
   }
 
-  console.log('[LeadDrawerOverview]', {
-    budget_range: lead.budget_range,
-    lead_score: lead.lead_score,
-    localScore,
-  })
-
   return (
     <div className="flex flex-col">
       {/* Status bar + Edit */}
@@ -243,7 +242,28 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
           {lead.status}
         </span>
         {canEdit && !editing && (
-          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDraft({
+                contact_name: lead.contact_name,
+                company: lead.company ?? '',
+                email: lead.email ?? '',
+                phone: lead.phone ?? '',
+                linkedin_url: lead.linkedin_url ?? '',
+                budget_range: lead.budget_range ?? '',
+                priority: lead.priority,
+                stage: lead.stage,
+                status: lead.status,
+                lead_score: lead.lead_score?.toString() ?? '',
+                next_follow_up: lead.next_follow_up ?? '',
+                description: lead.description ?? '',
+                source: lead.source,
+              })
+              setEditing(true)
+            }}
+          >
             Edit
           </Button>
         )}
@@ -280,6 +300,17 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
             <p className="text-[15px] font-semibold text-[var(--color-text-heading)]">
               {lead.contact_name}
             </p>
+          </div>
+
+          <div>
+            <FieldLabel>Description</FieldLabel>
+            {lead.description?.trim() ? (
+              <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-[var(--color-text-body)]">
+                {lead.description}
+              </p>
+            ) : (
+              <FieldValue muted>—</FieldValue>
+            )}
           </div>
 
           {/* Email + Phone */}
@@ -332,9 +363,7 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel>Source</FieldLabel>
-              <FieldValue>
-                {SOURCE_LABELS[lead.source] ?? lead.source}
-              </FieldValue>
+              <FieldValue>{getSourceLabel(lead.source)}</FieldValue>
             </div>
             <div>
               <FieldLabel>Service Interest</FieldLabel>
@@ -532,6 +561,46 @@ export function LeadDrawerOverview({ lead }: LeadDrawerOverviewProps) {
               />
             </div>
           ))}
+
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--color-text-muted)] mb-1">
+              Description
+            </p>
+            <textarea
+              rows={4}
+              maxLength={4000}
+              value={draft.description}
+              disabled={updateLead.isPending}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, description: e.target.value }))
+              }
+              placeholder="Context, needs, or notes about this lead"
+              className="w-full px-2.5 py-2 rounded-lg text-[13px] leading-snug resize-y min-h-[88px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-body)] outline-none focus:border-[var(--color-accent)] disabled:opacity-50"
+            />
+          </div>
+
+          <div>
+            <p className="text-[10px] font-semibold uppercase text-[var(--color-text-muted)] mb-1">
+              Source
+            </p>
+            <select
+              value={draft.source}
+              disabled={updateLead.isPending}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  source: e.target.value as LeadSource,
+                }))
+              }
+              className="w-full h-[36px] px-2 rounded-lg text-[13px] border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-50"
+            >
+              {sourceSelectOptions(draft.source).map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>

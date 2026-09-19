@@ -10,6 +10,10 @@ import { Button, Select } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 import { canAssignLead } from '@/lib/leads-permissions'
 import { useAuth } from '@/hooks/useAuth'
+import {
+  LEAD_SOURCE_CREATE_SCHEMA,
+  LEAD_SOURCES,
+} from '@/constants/lead-sources'
 import type { LeadPriority } from '@/types/leads'
 
 const schema = z.object({
@@ -18,13 +22,7 @@ const schema = z.object({
   email: z.string().email('Invalid email').or(z.literal('')).optional(),
   phone: z.string().optional(),
   linkedin_url: z.string().optional(),
-  source: z.enum([
-    'website_form',
-    'referral',
-    'cold_outreach',
-    'social',
-    'other',
-  ]),
+  source: LEAD_SOURCE_CREATE_SCHEMA,
   service_interest: z.string().optional(),
   budget_range: z.string().optional(),
   stage: z.string(),
@@ -32,6 +30,7 @@ const schema = z.object({
   tags: z.string().optional(),
   assigned_to: z.string().optional(),
   next_follow_up: z.string().optional(),
+  description: z.string().max(4000).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -122,13 +121,14 @@ export function NewLeadModal({
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      source: 'website_form',
+      source: 'website',
       stage: defaultStage,
       service_interest: '',
       budget_range: '',
       assigned_to: '',
       tags: '',
       lead_score: '',
+      description: '',
     },
   })
 
@@ -158,7 +158,7 @@ export function NewLeadModal({
         email: '',
         phone: '',
         linkedin_url: '',
-        source: 'website_form',
+        source: 'website',
         stage: defaultStage,
         service_interest: '',
         budget_range: '',
@@ -166,6 +166,7 @@ export function NewLeadModal({
         next_follow_up: '',
         tags: '',
         lead_score: '',
+        description: '',
       })
       setPriority('warm')
     }
@@ -270,17 +271,31 @@ export function NewLeadModal({
               </div>
             </div>
 
+            <div>
+              <FieldLabel>Description</FieldLabel>
+              <textarea
+                rows={3}
+                maxLength={4000}
+                placeholder="Context, needs, or notes about this lead"
+                className={cn(
+                  'w-full px-3 py-2.5 rounded-lg text-[13px] leading-snug resize-y min-h-[80px]',
+                  'border outline-none transition-colors',
+                  'bg-[var(--color-surface)] text-[var(--color-text-body)]',
+                  'placeholder:text-[var(--color-text-muted)]',
+                  'border-[var(--color-border)] focus:border-[var(--color-accent)]',
+                )}
+                {...register('description')}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <FieldLabel>Source</FieldLabel>
                 <Select
-                  options={[
-                    { value: 'website_form', label: 'Website form' },
-                    { value: 'referral', label: 'Referral' },
-                    { value: 'cold_outreach', label: 'Cold outreach' },
-                    { value: 'social', label: 'Social media' },
-                    { value: 'other', label: 'Other' },
-                  ]}
+                  options={LEAD_SOURCES.map((s) => ({
+                    value: s.value,
+                    label: s.label,
+                  }))}
                   {...register('source')}
                 />
               </div>

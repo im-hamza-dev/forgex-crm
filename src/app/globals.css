@@ -13,13 +13,13 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: var(--bg-page);
-  color: var(--forge-black);
+  background-color: var(--color-page);
+  color: var(--color-text-heading);
   font-family: var(--font-body);
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--fog); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: var(--pebble); }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }

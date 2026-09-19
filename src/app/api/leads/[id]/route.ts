@@ -6,6 +6,7 @@ import {
 } from '@/server/leads/leads.server'
 import { handleRouteError } from '@/server/shared/handle-route-error'
 import { ok, badRequest } from '@/lib/api/responses'
+import { LEAD_SOURCE_SCHEMA } from '@/constants/lead-sources'
 
 const updateSchema = z
   .object({
@@ -25,9 +26,7 @@ const updateSchema = z
         'lost',
       ])
       .optional(),
-    source: z
-      .enum(['website_form', 'referral', 'cold_outreach', 'social', 'other'])
-      .optional(),
+    source: LEAD_SOURCE_SCHEMA.optional(),
     priority: z.enum(['hot', 'warm', 'cold']).optional(),
     service_interest: z
       .enum([
@@ -46,6 +45,7 @@ const updateSchema = z
     tags: z.array(z.string()).optional(),
     lead_score: z.number().int().min(1).max(10).nullable().optional(),
     status: z.enum(['active', 'won', 'lost', 'archived']).optional(),
+    description: z.string().max(4000).nullable().optional(),
   })
   .strict()
 
