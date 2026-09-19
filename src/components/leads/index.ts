@@ -1,4 +1,5 @@
 export { LeadCard } from './LeadCard'
+export type { LeadAssigneeOption } from './LeadCard'
 export { KanbanColumn } from './KanbanColumn'
 export { LeadsKanban } from './LeadsKanban'
 export { LeadsToolbar } from './LeadsToolbar'

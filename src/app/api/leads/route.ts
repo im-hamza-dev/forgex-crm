@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createLead, getLeads } from '@/server/leads/leads.server'
 import { handleRouteError } from '@/server/shared/handle-route-error'
 import { ok, created, badRequest } from '@/lib/api/responses'
+import { LEAD_SOURCE_CREATE_SCHEMA } from '@/constants/lead-sources'
 
 const createSchema = z.object({
   contact_name: z.string().min(1),
@@ -20,9 +21,7 @@ const createSchema = z.object({
       'lost',
     ])
     .optional(),
-  source: z
-    .enum(['website_form', 'referral', 'cold_outreach', 'social', 'other'])
-    .optional(),
+  source: LEAD_SOURCE_CREATE_SCHEMA.optional(),
   priority: z.enum(['hot', 'warm', 'cold']).optional(),
   service_interest: z
     .enum([
@@ -40,6 +39,7 @@ const createSchema = z.object({
   next_follow_up: z.string().optional().nullable(),
   tags: z.array(z.string()).optional(),
   lead_score: z.number().int().min(1).max(10).optional().nullable(),
+  description: z.string().max(4000).optional().nullable(),
 })
 
 export async function GET(request: Request) {

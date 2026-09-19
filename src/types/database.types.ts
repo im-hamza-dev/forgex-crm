@@ -947,6 +947,7 @@ export type Database = {
           converted_project_id: string | null
           created_at: string
           created_by: string
+          description: string | null
           email: string | null
           id: string
           last_contacted_at: string | null
@@ -970,6 +971,7 @@ export type Database = {
           converted_project_id?: string | null
           created_at?: string
           created_by: string
+          description?: string | null
           email?: string | null
           id?: string
           last_contacted_at?: string | null
@@ -993,6 +995,7 @@ export type Database = {
           converted_project_id?: string | null
           created_at?: string
           created_by?: string
+          description?: string | null
           email?: string | null
           id?: string
           last_contacted_at?: string | null
@@ -1742,6 +1745,14 @@ export type Database = {
         | "cold_outreach"
         | "social"
         | "other"
+        | "linkedin"
+        | "upwork"
+        | "instagram"
+        | "facebook"
+        | "website"
+        | "indiehacker"
+        | "socials"
+        | "twitter"
       lead_stage:
         | "new_lead"
         | "contacted"
@@ -1957,6 +1968,14 @@ export const Constants = {
         "cold_outreach",
         "social",
         "other",
+        "linkedin",
+        "upwork",
+        "instagram",
+        "facebook",
+        "website",
+        "indiehacker",
+        "socials",
+        "twitter",
       ],
       lead_stage: [
         "new_lead",

@@ -119,7 +119,7 @@ export function Sidebar({
                       className={cn(
                         'shrink-0 transition-colors',
                         active
-                          ? 'text-white'
+                          ? 'text-[var(--color-on-action)]'
                           : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-body)]',
                       )}
                     />
@@ -129,7 +129,7 @@ export function Sidebar({
                         className={cn(
                           'flex-1 truncate transition-colors',
                           active
-                            ? 'text-white font-semibold'
+                            ? 'text-[var(--color-on-action)] font-semibold'
                             : 'text-[var(--color-text-secondary)] font-normal group-hover:text-[var(--color-text-body)]',
                         )}
                       >

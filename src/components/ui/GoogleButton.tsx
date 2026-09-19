@@ -34,7 +34,7 @@ export function GoogleButton({
       disabled={loading}
       className={cn(
         'w-full h-[44px] flex items-center justify-center gap-3',
-        'rounded-xl font-inter font-medium text-[14px] text-white',
+        'rounded-xl font-inter font-medium text-[14px] text-[var(--color-google-text)]',
         'bg-[var(--color-google-bg)] hover:bg-[var(--color-google-bg-hover)]',
         'transition-colors duration-150',
         'disabled:opacity-60 disabled:cursor-not-allowed',
