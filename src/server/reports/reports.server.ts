@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { requireRole } from '@/server/shared/require-session'
+import { getSourceLabel } from '@/constants/lead-sources'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -96,19 +97,19 @@ const STAGE_LABELS: Record<string, string> = {
 }
 
 const SOURCE_COLORS: Record<string, string> = {
+  linkedin: '#0A66C2',
+  upwork: '#14A800',
+  instagram: '#E4405F',
+  facebook: '#1877F2',
+  website: '#1A3D6B',
+  indiehacker: '#FF6B35',
+  socials: '#2D6A2D',
+  twitter: '#1D9BF0',
   referral: '#9c6644',
   website_form: '#1A3D6B',
   cold_outreach: '#4A1D6B',
   social: '#2D6A2D',
   other: '#9CA3AF',
-}
-
-const SOURCE_LABELS: Record<string, string> = {
-  referral: 'Referral',
-  website_form: 'Website form',
-  cold_outreach: 'Cold outreach',
-  social: 'Social media',
-  other: 'Other',
 }
 
 function parseBudget(range: string | null): number {
@@ -233,7 +234,7 @@ export async function getReportsData(dateRange = 'Last 30 days'): Promise<Report
   const leadSources: LeadSource[] = Object.entries(sourceCounts)
     .sort(([, a], [, b]) => b - a)
     .map(([key, value]) => ({
-      name: SOURCE_LABELS[key] ?? key,
+      name: getSourceLabel(key),
       value,
       pct:
         totalSources > 0 ? `${Math.round((value / totalSources) * 100)}%` : '0%',
