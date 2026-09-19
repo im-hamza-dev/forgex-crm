@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getPublicVideo } from '@/server/videos/get-public-video.server'
-import { buildPosterDataUri } from '@/lib/videos/poster'
+import { PublicVideoPlayer } from '@/components/videos/PublicVideoPlayer'
 
 type PageProps = {
   params: Promise<{ slug: string }>
@@ -64,18 +64,12 @@ export default async function PublicVideoPage({ params }: PageProps) {
 
         {/* Player — full width on mobile, 70% on desktop */}
         <div className="order-1 w-full lg:order-2 lg:w-[70%] lg:min-w-0">
-          <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-black shadow-[0_16px_48px_rgba(26,16,8,0.16)]">
-            <video
-              controls
-              playsInline
-              preload="metadata"
-              poster={buildPosterDataUri(video.title, video.description)}
-              src={video.signedUrl}
-              className="block aspect-video w-full bg-black"
-            >
-              Your browser cannot play this video.
-            </video>
-          </div>
+          <PublicVideoPlayer
+            slug={slug}
+            title={video.title}
+            description={video.description}
+            signedUrl={video.signedUrl}
+          />
         </div>
       </div>
     </main>

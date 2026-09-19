@@ -7,7 +7,7 @@ import { queryKeys } from '@/lib/query/keys'
 import { ROUTES } from '@/constants/routes'
 import { uploadVideoResumable } from '@/lib/videos/upload'
 import { probeVideoDuration } from '@/lib/videos/probe'
-import type { Video, VideoEditableFields } from '@/types/videos'
+import type { Video, VideoEditableFields, VideoEvent } from '@/types/videos'
 
 type ApiData<T> = { data: T }
 
@@ -28,6 +28,19 @@ export function useVideo(id: string | null) {
     enabled: Boolean(id),
     queryFn: async () => {
       const res = await fetchClient<ApiData<Video>>(ROUTES.API.VIDEO(id!))
+      return res.data
+    },
+  })
+}
+
+export function useVideoEvents(id: string | null) {
+  return useQuery({
+    queryKey: queryKeys.videos.events(id ?? ''),
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const res = await fetchClient<ApiData<VideoEvent[]>>(
+        ROUTES.API.VIDEO_EVENTS(id!),
+      )
       return res.data
     },
   })
