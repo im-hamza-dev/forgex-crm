@@ -25,7 +25,7 @@ import type {
 import type { ServerSupabase } from '@/server/shared/require-session'
 
 const LEAD_SELECT = `
-  id, contact_name, company, email, phone, linkedin_url,
+  id, contact_name, company, email, phone, linkedin_url, description,
   source, service_interest, budget_range, tags, stage, status,
   priority, lead_score, assigned_to, created_by,
   last_contacted_at, next_follow_up, converted_project_id,
@@ -147,12 +147,16 @@ export async function getLeads(filters: LeadFilters = {}): Promise<Lead[]> {
   if (filters.priority)
     query = query.eq('priority', filters.priority as LeadPriority)
   if (filters.status) query = query.eq('status', filters.status as LeadStatus)
-  if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to)
+  if (filters.assigned_to === 'unassigned') {
+    query = query.is('assigned_to', null)
+  } else if (filters.assigned_to) {
+    query = query.eq('assigned_to', filters.assigned_to)
+  }
   if (filters.search) {
     const q = filters.search.trim()
     if (q) {
       query = query.or(
-        `contact_name.ilike.%${q}%,company.ilike.%${q}%,email.ilike.%${q}%`,
+        `contact_name.ilike.%${q}%,company.ilike.%${q}%,email.ilike.%${q}%,description.ilike.%${q}%`,
       )
     }
   }
@@ -194,6 +198,7 @@ export async function createLead(input: {
   assigned_to?: string | null
   last_contacted_at?: string | null
   next_follow_up?: string | null
+  description?: string | null
 }): Promise<Lead> {
   const session = await requireSession()
   const supabase = await createClient()
@@ -207,7 +212,7 @@ export async function createLead(input: {
     email: input.email || null,
     phone: input.phone || null,
     linkedin_url: input.linkedin_url || null,
-    source: input.source ?? 'other',
+    source: input.source ?? 'website',
     service_interest: input.service_interest ?? null,
     budget_range: input.budget_range || null,
     tags: input.tags ?? [],
@@ -219,6 +224,7 @@ export async function createLead(input: {
     created_by: session.user.id,
     last_contacted_at: input.last_contacted_at || null,
     next_follow_up: input.next_follow_up || null,
+    description: input.description?.trim() || null,
   }
 
   const { data, error } = await supabase

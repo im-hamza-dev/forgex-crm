@@ -26,9 +26,9 @@ function ScoreDots({ score }: { score: number | null }) {
 }
 
 const PRIORITY_DOTS: Record<string, string> = {
-  hot: '#8B1A1A',
-  warm: '#8B5E00',
-  cold: '#1A3D6B',
+  hot: 'var(--color-priority-urgent)',
+  warm: 'var(--color-priority-high)',
+  cold: 'var(--color-priority-medium)',
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -106,7 +106,8 @@ export function LeadsTable({
           <tbody>
             {filtered.map((lead, i) => {
               const stage = getStage(lead.stage)
-              const dotColor = PRIORITY_DOTS[lead.priority] ?? '#8B5E00'
+              const dotColor =
+                PRIORITY_DOTS[lead.priority] ?? 'var(--color-priority-high)'
 
               return (
                 <tr

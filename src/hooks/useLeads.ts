@@ -93,11 +93,21 @@ export function useUpdateLead() {
       const previous = qc.getQueriesData<Lead[]>({
         queryKey: queryKeys.leads.all,
       })
+      const clearedAssignee =
+        data.assigned_to === null
+          ? {
+              assignee_name: null,
+              assignee_avatar: null,
+              assigned_profile: null,
+            }
+          : {}
       qc.setQueriesData<Lead[]>(
         { queryKey: queryKeys.leads.all },
         (old) =>
           old?.map((lead) =>
-            lead.id === id ? ({ ...lead, ...data } as Lead) : lead,
+            lead.id === id
+              ? ({ ...lead, ...data, ...clearedAssignee } as Lead)
+              : lead,
           ),
       )
       return { previous }
@@ -190,10 +200,12 @@ export function useAssignLead() {
       id,
       assigned_to,
       assignee_name,
+      assignee_avatar,
     }: {
       id: string
       assigned_to: string
       assignee_name: string
+      assignee_avatar?: string | null
     }) => {
       const res = await fetchClient<ApiData<Lead>>(
         `${ROUTES.API.LEAD(id)}/assign`,
@@ -203,6 +215,41 @@ export function useAssignLead() {
         },
       )
       return res.data
+    },
+    onMutate: async ({
+      id,
+      assigned_to,
+      assignee_name,
+      assignee_avatar,
+    }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.leads.all })
+      const previous = qc.getQueriesData<Lead[]>({
+        queryKey: queryKeys.leads.all,
+      })
+      qc.setQueriesData<Lead[]>(
+        { queryKey: queryKeys.leads.all },
+        (old) =>
+          old?.map((lead) =>
+            lead.id === id
+              ? {
+                  ...lead,
+                  assigned_to,
+                  assignee_name,
+                  assignee_avatar: assignee_avatar ?? null,
+                  assigned_profile: {
+                    full_name: assignee_name,
+                    avatar_url: assignee_avatar ?? null,
+                  },
+                }
+              : lead,
+          ),
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.previous.forEach(([key, data]) => {
+        qc.setQueryData(key, data)
+      })
     },
     onSuccess: (lead) => {
       void qc.invalidateQueries({ queryKey: queryKeys.leads.all })

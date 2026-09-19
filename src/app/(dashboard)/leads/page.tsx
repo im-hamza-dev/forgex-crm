@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { DashboardShell } from '@/components/layout'
 import { Button, toast } from '@/components/ui'
@@ -14,6 +15,7 @@ import {
 } from '@/components/leads'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreateLead, useDeleteLead, useLeads } from '@/hooks/useLeads'
+import { createClient } from '@/lib/supabase/client'
 import { canDeleteLead } from '@/lib/leads-permissions'
 import type { Lead, LeadFilters } from '@/types/leads'
 
@@ -26,8 +28,35 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced
 }
 
+const ASSIGNED_TO_PARAM = 'assigned_to'
+const ASSIGNED_TO_STORAGE_KEY = 'forgex-leads-assigned-to'
+
 export default function LeadsPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardShell title="Leads">
+          <div className="grid grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[280px] rounded-xl animate-pulse bg-[var(--color-surface-hover)] border border-[var(--color-border)]"
+              />
+            ))}
+          </div>
+        </DashboardShell>
+      }
+    >
+      <LeadsPageContent />
+    </Suspense>
+  )
+}
+
+function LeadsPageContent() {
   const { profile } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [view, setView] = useState<LeadsView>('kanban')
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -37,6 +66,49 @@ export default function LeadsPage() {
   const [stageFilter, setStageFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [assigneeOptions, setAssigneeOptions] = useState<
+    { value: string; label: string }[]
+  >([
+    { value: '', label: 'All assignees' },
+    { value: 'unassigned', label: 'Unassigned' },
+  ])
+  const assignedToFilter = searchParams.get(ASSIGNED_TO_PARAM) ?? ''
+
+  const setAssignedToFilter = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) params.set(ASSIGNED_TO_PARAM, value)
+    else params.delete(ASSIGNED_TO_PARAM)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    try {
+      if (value) localStorage.setItem(ASSIGNED_TO_STORAGE_KEY, value)
+      else localStorage.removeItem(ASSIGNED_TO_STORAGE_KEY)
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+
+  useEffect(() => {
+    try {
+      if (assignedToFilter) {
+        localStorage.setItem(ASSIGNED_TO_STORAGE_KEY, assignedToFilter)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [assignedToFilter])
+
+  useEffect(() => {
+    if (searchParams.get(ASSIGNED_TO_PARAM)) return
+    try {
+      const stored = localStorage.getItem(ASSIGNED_TO_STORAGE_KEY)
+      if (stored) setAssignedToFilter(stored)
+    } catch {
+      /* ignore */
+    }
+    // Restore once from localStorage when the URL has no assignee param.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
 
@@ -46,9 +118,44 @@ export default function LeadsPage() {
       stage: stageFilter || undefined,
       priority: priorityFilter || undefined,
       status: statusFilter || undefined,
+      assigned_to: assignedToFilter || undefined,
     }),
-    [debouncedSearch, stageFilter, priorityFilter, statusFilter],
+    [
+      debouncedSearch,
+      stageFilter,
+      priorityFilter,
+      statusFilter,
+      assignedToFilter,
+    ],
   )
+
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+      stageFilter ||
+      priorityFilter ||
+      statusFilter ||
+      assignedToFilter,
+  )
+
+  useEffect(() => {
+    const supabase = createClient()
+    void supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('is_active', true)
+      .neq('role', 'client')
+      .order('full_name', { ascending: true })
+      .then(({ data }) => {
+        setAssigneeOptions([
+          { value: '', label: 'All assignees' },
+          { value: 'unassigned', label: 'Unassigned' },
+          ...(data ?? []).map((p) => ({
+            value: p.id,
+            label: p.full_name ?? p.id,
+          })),
+        ])
+      })
+  }, [])
 
   const { data: leads = [], isLoading, isError, error, refetch } =
     useLeads(filters)
@@ -86,6 +193,7 @@ export default function LeadsPage() {
     stage: string
     assigned_to?: string
     next_follow_up?: string
+    description?: string
     priority: 'hot' | 'warm' | 'cold'
     tags: string[]
     lead_score: number | null
@@ -103,6 +211,7 @@ export default function LeadsPage() {
         stage: values.stage,
         assigned_to: values.assigned_to || null,
         next_follow_up: values.next_follow_up || null,
+        description: values.description?.trim() || null,
         priority: values.priority,
         tags: values.tags,
         lead_score: values.lead_score,
@@ -128,9 +237,10 @@ export default function LeadsPage() {
           onPriorityFilterChange={setPriorityFilter}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          filterActive={Boolean(
-            stageFilter || priorityFilter || statusFilter || searchQuery,
-          )}
+          assignedToFilter={assignedToFilter}
+          onAssignedToFilterChange={setAssignedToFilter}
+          assigneeOptions={assigneeOptions}
+          filterActive={hasActiveFilters}
         />
         <Button
           variant="primary"
@@ -166,21 +276,39 @@ export default function LeadsPage() {
       {!isLoading && !isError && leads.length === 0 && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-16 text-center">
           <p className="text-[16px] font-semibold text-[var(--color-text-heading)] mb-1">
-            No leads yet
+            {hasActiveFilters ? 'No matching leads' : 'No leads yet'}
           </p>
           <p className="text-[13px] text-[var(--color-text-muted)] mb-4">
-            Create your first lead to start the pipeline.
+            {hasActiveFilters
+              ? 'Try a different assignee or clear the current filters.'
+              : 'Create your first lead to start the pipeline.'}
           </p>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setModalStage('new_lead')
-              setModalOpen(true)
-            }}
-          >
-            New Lead
-          </Button>
+          {hasActiveFilters ? (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => {
+                setSearchQuery('')
+                setStageFilter('')
+                setPriorityFilter('')
+                setStatusFilter('')
+                setAssignedToFilter('')
+              }}
+            >
+              Clear filters
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setModalStage('new_lead')
+                setModalOpen(true)
+              }}
+            >
+              New Lead
+            </Button>
+          )}
         </div>
       )}
 

@@ -3,6 +3,7 @@
 import { Search, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
+import { ThemeToggle } from './ThemeToggle'
 
 interface HeaderProps {
   title: string
@@ -98,6 +99,7 @@ export function Header({
       </button>
 
       <div className="flex items-center gap-2 shrink-0">
+        <ThemeToggle />
         <button
           type="button"
           onClick={onBellClick}

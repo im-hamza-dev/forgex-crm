@@ -83,9 +83,15 @@
   --color-overlay:        rgba(26, 16, 8, 0.5);
   --color-overlay-drawer: rgba(26, 16, 8, 0.4);
 
+  /* ── Action fill (sidebar active, filled chips) ── */
+  --color-on-action:      #FFFFFF;
+
   /* ── Auth / Google button ── */
   --color-google-bg:       #000000;
   --color-google-bg-hover: #1a1a1a;
+  --color-google-text:     #FFFFFF;
+
+  color-scheme: light;
 
   /* ── Lead stage chips (dashboard mock / kanban) ── */
   --color-stage-new:            #6B6B6B;
@@ -124,6 +130,86 @@
   --radius-lg:    12px;
   --radius-xl:    14px;
   --radius-pill:  9999px;
+}
+
+[data-theme="dark"] {
+  --forge-black:    #F5EEE8;
+  --mist:           #12100E;
+  --fog:            #3F3934;
+  --pebble:         #7A6E64;
+  --paper:          #1C1916;
+  --btn-text:       #F5EEE8;
+  --border-default: #2E2A26;
+  --border-strong:  #3F3934;
+  --bg-page:        #12100E;
+  --bg-card:        #1C1916;
+
+  --color-accent:         #C4845C;
+  --color-accent-hover:   #D4946C;
+  --color-accent-subtle:  #2A211C;
+  --color-accent-border:  #4A382C;
+  --color-action:         #C4845C;
+  --color-on-action:      #FFFFFF;
+
+  --color-page:           #12100E;
+  --color-surface:        #1C1916;
+  --color-surface-hover:  #26221E;
+
+  --color-text-heading:   #F5EEE8;
+  --color-text-body:      #D8CDC4;
+  --color-text-secondary: #A89888;
+  --color-text-muted:     #7A6E64;
+  --color-text-disabled:  #5C524A;
+
+  --color-border:         #2E2A26;
+  --color-border-strong:  #3F3934;
+  --color-border-focus:   #C4845C;
+
+  --color-success:        #6FBF6F;
+  --color-success-bg:     #1A2E1A;
+  --color-warning:        #E0B04A;
+  --color-warning-bg:     #2E2610;
+  --color-danger:         #E07070;
+  --color-danger-bg:      #2E1616;
+  --color-info:           #7AA3D4;
+  --color-info-bg:        #162033;
+
+  --color-overlay:        rgba(0, 0, 0, 0.64);
+  --color-overlay-drawer: rgba(0, 0, 0, 0.56);
+
+  --color-google-bg:       #F4EDE6;
+  --color-google-bg-hover: #E8DDD4;
+  --color-google-text:     #1A1008;
+
+  --color-stage-new:            #C4C4C4;
+  --color-stage-new-bg:         #2A2A2A;
+  --color-stage-new-dot:        #9CA3AF;
+  --color-stage-qualified:      #D4B8E8;
+  --color-stage-qualified-bg:   #2A1F35;
+  --color-stage-proposal:       #E0B04A;
+  --color-stage-proposal-bg:    #2E2610;
+  --color-stage-contacted:      #7AA3D4;
+  --color-stage-contacted-bg:   #162033;
+  --color-stage-negotiation:    #D4A0C0;
+  --color-stage-negotiation-bg: #2E1A28;
+  --color-stage-won:            #6FBF6F;
+  --color-stage-won-bg:         #1A2E1A;
+  --color-stage-lost:           #E07070;
+  --color-stage-lost-bg:        #2E1616;
+
+  --color-priority-urgent: #E07070;
+  --color-priority-high:   #E0B04A;
+  --color-priority-medium: #7AA3D4;
+  --color-priority-low:    #6FBF6F;
+
+  --color-project-pas:    #D4B8E8;
+  --color-project-pas-bg: #2A1F35;
+  --color-project-b2b:    #7AA3D4;
+  --color-project-b2b-bg: #162033;
+  --color-project-cgp:    #6FBF6F;
+  --color-project-cgp-bg: #1A2E1A;
+
+  color-scheme: dark;
 }
 
 /* TipTap / prose editor */
