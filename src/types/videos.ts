@@ -22,10 +22,16 @@ export type VideoListItem = Pick<
   | 'file_size_bytes'
   | 'created_at'
   | 'created_by'
+  | 'view_count'
+  | 'play_count'
 > & {
   creator_name?: string | null
   creator_avatar?: string | null
 }
+
+export type VideoEventType = 'view' | 'play'
+
+export type VideoEvent = Database['public']['Tables']['video_events']['Row']
 
 export type VideoVisibility = 'public' | 'private'
 

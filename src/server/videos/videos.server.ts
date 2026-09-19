@@ -8,11 +8,12 @@ import {
   ValidationError,
 } from '@/server/shared/errors'
 import { generateUniqueSlug } from '@/server/videos/slug.server'
-import type { Video, VideoEditableFields } from '@/types/videos'
+import type { Video, VideoEditableFields, VideoEvent } from '@/types/videos'
 
 const VIDEO_SELECT = `
   id, slug, title, description, storage_path, is_public,
   duration_seconds, file_size_bytes, mime_type,
+  view_count, play_count,
   created_by, created_at, updated_at, deleted_at
 `
 
@@ -236,4 +237,39 @@ export async function getVideoPlaybackUrl(id: string): Promise<string> {
   }
 
   return signed.signedUrl
+}
+
+const EVENT_SELECT = `
+  id, video_id, event_type, ip, user_agent, referrer,
+  browser, os, device, country, city, created_at
+`
+
+const DEFAULT_EVENT_LIMIT = 50
+
+export async function getVideoEvents(
+  videoId: string,
+  limit = DEFAULT_EVENT_LIMIT,
+): Promise<VideoEvent[]> {
+  await requireRole([...VIDEO_ROLES])
+  const supabase = await createClient()
+
+  const { data: video, error: findError } = await supabase
+    .from('videos')
+    .select('id')
+    .eq('id', videoId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (findError) throw new SupabaseError(findError.message)
+  if (!video) throw new NotFoundError('Video not found')
+
+  const { data, error } = await supabase
+    .from('video_events')
+    .select(EVENT_SELECT)
+    .eq('video_id', videoId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw new SupabaseError(error.message)
+  return (data ?? []) as VideoEvent[]
 }
