@@ -14,6 +14,7 @@ import {
   useBlogComments,
   useModerateComment,
   useDeleteBlogComment,
+  useReplyToBlogComment,
 } from '@/hooks/useBlog'
 import {
   canModerateComments,
@@ -27,6 +28,7 @@ import { BlogSeoPanel } from './BlogSeoPanel'
 import { TipTapEditor } from './TipTapEditor'
 import { markdownToDoc } from '@/components/docs/RichDocEditor'
 import type { BlogPost, BlogPostStatus } from '@/types/blog'
+import { getCommenterEmail, getCommenterName } from '@/types/blog'
 import type { Json } from '@/types/database.types'
 
 interface BlogEditorProps {
@@ -91,6 +93,7 @@ export function BlogEditor({
   )
   const [seoTitle, setSeoTitle] = useState(resolvedPost?.seo_title ?? '')
   const [seoDesc, setSeoDesc] = useState(resolvedPost?.seo_description ?? '')
+  const [tldr, setTldr] = useState(resolvedPost?.tldr ?? '')
   const [categoryId, setCategoryId] = useState(resolvedPost?.category_id ?? '')
   const [tags, setTags] = useState<string[]>(resolvedPost?.tags ?? [])
   const [tagsInput, setTagsInput] = useState(
@@ -99,9 +102,11 @@ export function BlogEditor({
   const [allowComments, setAllowComments] = useState(
     resolvedPost?.allow_comments ?? true,
   )
-  const [ogIsCover, setOgIsCover] = useState(true)
   const [isFeatured, setIsFeatured] = useState(
     resolvedPost?.is_featured ?? false,
+  )
+  const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>(
+    Array.isArray(resolvedPost?.faqs) ? resolvedPost.faqs : [],
   )
   const [coverUrl, setCoverUrl] = useState(
     resolvedPost?.cover_image_url ?? null,
@@ -123,6 +128,10 @@ export function BlogEditor({
   const { data: comments = [] } = useBlogComments(postId)
   const moderate = useModerateComment()
   const deleteComment = useDeleteBlogComment()
+  const replyComment = useReplyToBlogComment()
+  const [replyingToId, setReplyingToId] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [replyError, setReplyError] = useState<string | null>(null)
 
   const isSaving = createPost.isPending || updatePost.isPending
 
@@ -146,12 +155,14 @@ export function BlogEditor({
     status,
     seoTitle,
     seoDesc,
+    tldr,
     categoryId,
     tags,
     allowComments,
     isFeatured,
     coverUrl,
     publishDate,
+    faqs,
   ])
 
   useEffect(() => {
@@ -168,11 +179,13 @@ export function BlogEditor({
       )
       setSeoTitle(resolvedPost.seo_title ?? '')
       setSeoDesc(resolvedPost.seo_description ?? '')
+      setTldr(resolvedPost.tldr ?? '')
       setCategoryId(resolvedPost.category_id ?? '')
       setTags(resolvedPost.tags ?? [])
       setTagsInput((resolvedPost.tags ?? []).join(', '))
       setAllowComments(resolvedPost.allow_comments ?? true)
       setIsFeatured(resolvedPost.is_featured ?? false)
+      setFaqs(Array.isArray(resolvedPost.faqs) ? resolvedPost.faqs : [])
       setCoverUrl(resolvedPost.cover_image_url ?? null)
       setLastSavedAt(
         resolvedPost.updated_at ? new Date(resolvedPost.updated_at) : null,
@@ -196,9 +209,16 @@ export function BlogEditor({
         status: nextStatus,
         seo_title: seoTitle || null,
         seo_description: seoDesc || null,
-        og_image_url: ogIsCover ? coverUrl : null,
+        tldr: tldr.trim() || null,
+        // og_image_url is set server-side after create — do not overwrite on save
         is_featured: isFeatured,
         allow_comments: allowComments,
+        faqs: (() => {
+          const cleaned = faqs.filter(
+            (f) => f.question.trim().length > 0 && f.answer.trim().length > 0,
+          )
+          return cleaned.length > 0 ? cleaned : null
+        })(),
         publish_date:
           nextStatus === 'scheduled' && publishDate ? publishDate : null,
       }
@@ -212,9 +232,10 @@ export function BlogEditor({
       status,
       seoTitle,
       seoDesc,
-      ogIsCover,
+      tldr,
       isFeatured,
       allowComments,
+      faqs,
       publishDate,
     ],
   )
@@ -534,7 +555,14 @@ export function BlogEditor({
                     Comments ({comments.length})
                   </h3>
                   <div className="space-y-3">
-                    {comments.map((c) => (
+                    {comments.map((c) => {
+                      const commenterName = getCommenterName(c)
+                      const commenterEmail = getCommenterEmail(c)
+                      const submittedAt = c.created_at
+                        ? new Date(c.created_at).toLocaleString()
+                        : null
+
+                      return (
                       <div
                         key={c.id}
                         className="rounded-xl border p-4"
@@ -542,15 +570,26 @@ export function BlogEditor({
                       >
                         <div className="flex items-start gap-3">
                           <Avatar
-                            name={c.author?.full_name ?? 'User'}
+                            name={commenterName}
                             src={c.author?.avatar_url}
                             size="sm"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="text-[13px] font-semibold text-[var(--color-text-heading)]">
-                                {c.author?.full_name ?? 'User'}
+                                {commenterName}
                               </span>
+                              {c.is_team_reply && (
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide"
+                                  style={{
+                                    background: 'var(--color-text-heading)',
+                                    color: 'var(--color-page)',
+                                  }}
+                                >
+                                  Forgex
+                                </span>
+                              )}
                               <span
                                 className="text-[11px] px-2 py-0.5 rounded-full font-medium"
                                 style={{
@@ -571,6 +610,12 @@ export function BlogEditor({
                                 {c.status}
                               </span>
                             </div>
+                            {!c.is_team_reply && (
+                              <p className="text-[11px] text-[var(--color-text-muted)] mb-1">
+                                {commenterEmail}
+                                {submittedAt ? ` · ${submittedAt}` : ''}
+                              </p>
+                            )}
                             <p className="text-[13px] text-[var(--color-text-body)] whitespace-pre-wrap">
                               {c.content}
                             </p>
@@ -629,6 +674,94 @@ export function BlogEditor({
                                   </Button>
                                 </div>
                               )}
+                            {canModerateComments(profile) &&
+                              !c.is_team_reply && (
+                                <div className="mt-3">
+                                  {replyingToId === c.id ? (
+                                    <div className="space-y-2">
+                                      <textarea
+                                        value={replyText}
+                                        onChange={(e) => {
+                                          setReplyText(e.target.value)
+                                          setReplyError(null)
+                                        }}
+                                        placeholder="Write a reply..."
+                                        rows={3}
+                                        className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none resize-y min-h-[72px]"
+                                        style={{
+                                          borderColor: 'var(--color-border)',
+                                          background: 'var(--color-surface)',
+                                          color: 'var(--color-text-body)',
+                                        }}
+                                      />
+                                      {replyError && (
+                                        <p className="text-[12px] text-[var(--color-danger)]">
+                                          {replyError}
+                                        </p>
+                                      )}
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="primary"
+                                          loading={replyComment.isPending}
+                                          onClick={() => {
+                                            if (!replyText.trim()) {
+                                              setReplyError(
+                                                'Reply cannot be empty',
+                                              )
+                                              return
+                                            }
+                                            void replyComment
+                                              .mutateAsync({
+                                                postId,
+                                                commentId: c.id,
+                                                content: replyText,
+                                              })
+                                              .then(() => {
+                                                toast.success('Reply sent')
+                                                setReplyingToId(null)
+                                                setReplyText('')
+                                                setReplyError(null)
+                                              })
+                                              .catch((err: unknown) => {
+                                                setReplyError(
+                                                  err instanceof Error
+                                                    ? err.message
+                                                    : 'Failed to send reply',
+                                                )
+                                              })
+                                          }}
+                                        >
+                                          Send reply
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setReplyingToId(null)
+                                            setReplyText('')
+                                            setReplyError(null)
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="text-[12px] font-medium text-[var(--color-text-heading)] underline underline-offset-2"
+                                      onClick={() => {
+                                        setReplyingToId(c.id)
+                                        setReplyText('')
+                                        setReplyError(null)
+                                      }}
+                                    >
+                                      Reply
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             {profile?.role === 'admin' && (
                               <button
                                 type="button"
@@ -655,7 +788,8 @@ export function BlogEditor({
                           </div>
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                     {comments.length === 0 && (
                       <p className="text-[13px] text-[var(--color-text-muted)]">
                         No comments yet
@@ -679,7 +813,7 @@ export function BlogEditor({
           />
 
           <div
-            className="w-[280px] shrink-0 overflow-y-auto p-4"
+            className="w-[360px] shrink-0 overflow-y-auto p-4"
             style={{ background: 'var(--color-page)' }}
           >
             <div
@@ -690,21 +824,23 @@ export function BlogEditor({
                 title={title}
                 seoTitle={seoTitle}
                 seoDescription={seoDesc}
+                tldr={tldr}
                 categoryId={categoryId}
                 tags={tags}
                 tagsInput={tagsInput}
                 allowComments={allowComments}
-                ogImageIsCover={ogIsCover}
                 isFeatured={isFeatured}
+                faqs={faqs}
                 authorName={authorName}
                 readingTime={resolvedPost?.reading_time_minutes ?? null}
                 onSeoTitleChange={setSeoTitle}
                 onSeoDescChange={setSeoDesc}
+                onTldrChange={setTldr}
                 onCategoryChange={setCategoryId}
                 onTagsInputChange={setTagsInput}
                 onTagsChange={setTags}
                 onAllowCommentsChange={setAllowComments}
-                onOgImageIsCoverChange={setOgIsCover}
+                onFaqsChange={setFaqs}
                 onIsFeaturedChange={
                   canFeaturePost(profile) ? setIsFeatured : undefined
                 }

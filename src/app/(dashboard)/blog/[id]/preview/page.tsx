@@ -382,6 +382,29 @@ export default function BlogPreviewPage({
           </p>
         )}
 
+        {post.tldr && (
+          <div
+            className="rounded-xl border px-5 py-4 mb-8"
+            style={{
+              borderColor: 'var(--color-border)',
+              background: 'var(--color-surface)',
+            }}
+          >
+            <p
+              className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              TL;DR
+            </p>
+            <p
+              className="text-[15px] leading-relaxed whitespace-pre-wrap"
+              style={{ color: 'var(--color-text-body)' }}
+            >
+              {post.tldr}
+            </p>
+          </div>
+        )}
+
         <div
           className="flex items-center gap-3 pb-6 mb-8 border-b"
           style={{ borderColor: 'var(--color-border)' }}

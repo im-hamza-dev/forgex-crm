@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -65,10 +65,14 @@ export type Database = {
       }
       blog_comments: {
         Row: {
+          author_email: string | null
+          author_name: string | null
           community_user_id: string | null
           content: string
           created_at: string
           id: string
+          is_team_reply: boolean
+          notification_sent_at: string | null
           parent_comment_id: string | null
           post_id: string
           rejection_reason: string | null
@@ -79,10 +83,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          author_email?: string | null
+          author_name?: string | null
           community_user_id?: string | null
           content: string
           created_at?: string
           id?: string
+          is_team_reply?: boolean
+          notification_sent_at?: string | null
           parent_comment_id?: string | null
           post_id: string
           rejection_reason?: string | null
@@ -93,10 +101,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          author_email?: string | null
+          author_name?: string | null
           community_user_id?: string | null
           content?: string
           created_at?: string
           id?: string
+          is_team_reply?: boolean
+          notification_sent_at?: string | null
           parent_comment_id?: string | null
           post_id?: string
           rejection_reason?: string | null
@@ -155,6 +167,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           excerpt: string | null
+          faqs: { question: string; answer: string }[] | null
           id: string
           is_community_post: boolean
           is_featured: boolean
@@ -168,6 +181,7 @@ export type Database = {
           status: Database["public"]["Enums"]["blog_post_status"]
           tags: string[]
           title: string
+          tldr: string | null
           updated_at: string
           view_count: number
         }
@@ -181,6 +195,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string | null
+          faqs?: { question: string; answer: string }[] | null
           id?: string
           is_community_post?: boolean
           is_featured?: boolean
@@ -194,6 +209,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["blog_post_status"]
           tags?: string[]
           title: string
+          tldr?: string | null
           updated_at?: string
           view_count?: number
         }
@@ -207,6 +223,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string | null
+          faqs?: { question: string; answer: string }[] | null
           id?: string
           is_community_post?: boolean
           is_featured?: boolean
@@ -220,6 +237,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["blog_post_status"]
           tags?: string[]
           title?: string
+          tldr?: string | null
           updated_at?: string
           view_count?: number
         }
@@ -246,6 +264,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      blog_subscribers: {
+        Row: {
+          email: string
+          id: string
+          source_post_slug: string | null
+          status: string
+          subscribed_at: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          source_post_slug?: string | null
+          status?: string
+          subscribed_at?: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          source_post_slug?: string | null
+          status?: string
+          subscribed_at?: string
+        }
+        Relationships: []
       }
       client_accounts: {
         Row: {
@@ -545,6 +587,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      comment_otps: {
+        Row: {
+          comment_draft: Json
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          otp_hash: string
+        }
+        Insert: {
+          comment_draft: Json
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          otp_hash: string
+        }
+        Update: {
+          comment_draft?: Json
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          otp_hash?: string
+        }
+        Relationships: []
       }
       community_users: {
         Row: {
@@ -1467,6 +1536,59 @@ export type Database = {
           },
         ]
       }
+      video_events: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          device: string | null
+          event_type: string
+          id: string
+          ip: string | null
+          os: string | null
+          referrer: string | null
+          user_agent: string | null
+          video_id: string
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          event_type: string
+          id?: string
+          ip?: string | null
+          os?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          video_id: string
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          event_type?: string
+          id?: string
+          ip?: string | null
+          os?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_events_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos: {
         Row: {
           created_at: string
@@ -1478,10 +1600,12 @@ export type Database = {
           id: string
           is_public: boolean
           mime_type: string | null
+          play_count: number
           slug: string
           storage_path: string
           title: string
           updated_at: string
+          view_count: number
         }
         Insert: {
           created_at?: string
@@ -1493,10 +1617,12 @@ export type Database = {
           id?: string
           is_public?: boolean
           mime_type?: string | null
+          play_count?: number
           slug: string
           storage_path: string
           title: string
           updated_at?: string
+          view_count?: number
         }
         Update: {
           created_at?: string
@@ -1508,10 +1634,12 @@ export type Database = {
           id?: string
           is_public?: boolean
           mime_type?: string | null
+          play_count?: number
           slug?: string
           storage_path?: string
           title?: string
           updated_at?: string
+          view_count?: number
         }
         Relationships: [
           {
@@ -1575,6 +1703,21 @@ export type Database = {
         Returns: boolean
       }
       process_due_date_notifications: { Args: never; Returns: undefined }
+      record_video_event: {
+        Args: {
+          p_browser?: string
+          p_city?: string
+          p_country?: string
+          p_device?: string
+          p_event_type: string
+          p_ip?: string
+          p_os?: string
+          p_referrer?: string
+          p_user_agent?: string
+          p_video_id: string
+        }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       unaccent: { Args: { "": string }; Returns: string }
